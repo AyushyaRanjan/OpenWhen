@@ -1,0 +1,11 @@
+venv/
+
+# Recordings live here and should never be committed. The .gitkeep exception
+# keeps the empty folder in a fresh clone.
+media/*
+!media/.gitkeep
+
+comfort.db
+config.json
+__pycache__/
+.env

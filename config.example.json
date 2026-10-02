@@ -1,0 +1,21 @@
+{
+  "chat_model": "qwen2.5:3b",
+  "embed_model": "nomic-embed-text",
+  "ollama_url": "http://127.0.0.1:11434",
+  "friend_name": "Friend",
+  "helper_name": "Dagger",
+  "helper_phone": "76xxxxxxxx",
+  "moods": [
+    "lonely",
+    "sad",
+    "anxious",
+    "overwhelmed",
+    "tired",
+    "numb",
+    "hopeless",
+    "okay-but-flat"
+  ],
+  "min_match_score": 0.3,
+  "keep_alive": "5m",
+  "use_model_safety_check": true
+}
