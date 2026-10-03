@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Open When</title>
+    <meta
+      name="description"
+      content="A quiet place to find a few kind words when you need them."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fbf6f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#221a17" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Open When" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <!-- First paint: a warm, calm splash while the app wakes up. -->
+    <div id="splash" class="splash" aria-hidden="true">
+      <div class="splash-heart"></div>
+      <p class="splash-name">Open When</p>
+    </div>
+
+    <main class="shell">
+      <section id="home" class="screen home">
+        <p id="greeting" class="greeting">Hi.</p>
+        <h1 class="h1">How are you feeling?</h1>
+
+        <div id="moods" class="moods" role="group" aria-label="How you feel"></div>
+
+        <label class="label" for="more">Want to tell me more?</label>
+        <textarea
+          id="more"
+          rows="3"
+          placeholder="You can write as little or as much as you like."
+        ></textarea>
+
+        <button id="send" class="btn primary" type="button">Send</button>
+
+        <div class="secondary-row">
+          <button id="openWin" class="btn quiet" type="button">Log a win</button>
+          <button id="openChallenge" class="btn quiet" type="button">
+            I have a challenge
+          </button>
+          <button id="openSaved" class="btn quiet" type="button">
+            Saved for later
+          </button>
+        </div>
+
+        <div id="result" class="result" aria-live="polite"></div>
+
+        <div id="againWrap" class="again-wrap" hidden>
+          <button id="again" class="btn quiet" type="button">Show me another</button>
+        </div>
+      </section>
+
+      <section id="win" class="screen panel" hidden>
+        <button class="btn back" type="button" data-close="win">&larr; Back</button>
+        <h2 class="h2">Log a win</h2>
+        <p class="muted">Anything counts. Getting through the day counts.</p>
+        <label class="label" for="winText">What went even a little bit right?</label>
+        <textarea id="winText" rows="3"></textarea>
+        <button id="saveWin" class="btn primary" type="button">Save this win</button>
+        <p id="winStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section id="challenge" class="screen panel" hidden>
+        <button class="btn back" type="button" data-close="challenge">
+          &larr; Back
+        </button>
+        <h2 class="h2">I have a challenge</h2>
+        <p class="muted">
+          Tell me what feels hard. I&rsquo;ll offer one tiny step, nothing more.
+        </p>
+        <label class="label" for="challengeText">What&rsquo;s making it hard right now?</label>
+        <textarea id="challengeText" rows="3"></textarea>
+        <button id="getStep" class="btn primary" type="button">
+          Give me one tiny step
+        </button>
+        <div id="stepCard" class="step-card" hidden>
+          <p id="stepText" class="step-text"></p>
+          <div class="step-actions">
+            <button id="stepDone" class="btn primary" type="button">Done!</button>
+            <button id="stepSmaller" class="btn quiet" type="button">
+              Too big, make it smaller
+            </button>
+          </div>
+        </div>
+        <p id="stepStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section id="saved" class="screen panel" hidden>
+        <button class="btn back" type="button" data-close="saved">
+          &larr; Back
+        </button>
+        <h2 class="h2">Saved for later</h2>
+        <p id="savedLead" class="saved-lead">A few kind things you kept close.</p>
+        <div id="savedList" class="saved-list"></div>
+        <p id="savedEmpty" class="muted" hidden>
+          You haven&rsquo;t saved anything yet. Tap the heart on a message and it
+          will wait here for you.
+        </p>
+      </section>
+
+      <section id="crisis" class="screen crisis" hidden tabindex="-1">
+        <p id="crisisMessage" class="crisis-message"></p>
+        <div id="crisisButtons" class="crisis-buttons"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p id="status" class="status-line" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Here with you</span>
+      </p>
+      <p>
+        This is a comfort tool, not therapy. If things feel too heavy, please reach
+        out to someone.
+      </p>
+    </footer>
+
+    <!-- First-run welcome. Shown once, then remembered on this device. -->
+    <div
+      id="welcome"
+      class="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcomeTitle"
+      hidden
+    >
+      <div class="overlay-card">
+        <div class="welcome-slides">
+          <section class="welcome-slide is-active" data-slide="0">
+            <p class="welcome-kicker">Welcome</p>
+            <h2 id="welcomeTitle" class="welcome-title">Someone made this for you</h2>
+            <p class="welcome-text">
+              A person who cares about you put this together. Tap a feeling, and
+              it will find a few kind words that were left here, just for you.
+            </p>
+          </section>
+          <section class="welcome-slide" data-slide="1">
+            <p class="welcome-kicker">Private</p>
+            <h2 class="welcome-title">What you feel stays here</h2>
+            <p class="welcome-text">
+              Nothing you type or say leaves this device. There is no account, no
+              tracking, and nobody watching. It is only for you.
+            </p>
+          </section>
+          <section class="welcome-slide" data-slide="2">
+            <p class="welcome-kicker">Gentle</p>
+            <h2 class="welcome-title">A comfort, not therapy</h2>
+            <p class="welcome-text">
+              This is a calm place, not a doctor or a crisis line. If things feel
+              too heavy, please reach out to someone you trust.
+            </p>
+          </section>
+        </div>
+
+        <div class="overlay-foot">
+          <div class="welcome-dots" aria-hidden="true">
+            <span class="welcome-dot is-active"></span>
+            <span class="welcome-dot"></span>
+            <span class="welcome-dot"></span>
+          </div>
+          <div class="overlay-actions">
+            <button id="welcomeSkip" class="btn back" type="button">Skip</button>
+            <button id="welcomeNext" class="btn primary" type="button">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- One-time, gentle nudge to add the app to the home screen. -->
+    <div
+      id="a2hs"
+      class="banner"
+      role="dialog"
+      aria-labelledby="a2hsTitle"
+      hidden
+    >
+      <div class="banner-body">
+        <p id="a2hsTitle" class="banner-title">Keep this close</p>
+        <p id="a2hsText" class="banner-text">
+          Add Open When to your home screen so it is always one tap away.
+        </p>
+      </div>
+      <div class="banner-actions">
+        <button id="a2hsAction" class="btn primary" type="button" hidden>Add</button>
+        <button id="a2hsDismiss" class="btn quiet" type="button">Not now</button>
+      </div>
+    </div>
+
+    <!-- Shown when a new version of the app is ready. -->
+    <div id="updateBanner" class="banner" role="status" hidden>
+      <div class="banner-body">
+        <p class="banner-title">A fresh version is ready</p>
+        <p class="banner-text">Refresh to get the latest touches.</p>
+      </div>
+      <div class="banner-actions">
+        <button id="updateReload" class="btn primary" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

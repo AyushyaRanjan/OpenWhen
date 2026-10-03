@@ -34,9 +34,13 @@ CREATE INDEX IF NOT EXISTS idx_items_kind_created ON items (kind, created DESC);
 """
 
 
-def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
+    # Resolve DB_PATH at call time, not as a default argument. A default would
+    # be bound once at import, so tests that point DB_PATH at a tmp file would
+    # silently keep writing to the real comfort.db.
+    target = DB_PATH if db_path is None else db_path
+    Path(target).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(target)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn

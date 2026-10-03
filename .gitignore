@@ -9,3 +9,6 @@ comfort.db
 config.json
 __pycache__/
 .env
+
+# Model-comparison output can echo private messages from the database.
+tools/model_comparison.md

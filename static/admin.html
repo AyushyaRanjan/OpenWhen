@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <title>Open When… — Add a note</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="hero">
+        <p class="eyebrow">A note for</p>
+        <h1 id="friendName">your friend</h1>
+        <p class="sub">
+          Say it the way you'd say it out loud. It'll reach them on a day they
+          need it.
+        </p>
+      </header>
+
+      <!-- Shown instead of the form if a message ever trips the safety check. -->
+      <section id="crisisCard" class="card crisis" hidden></section>
+
+      <section id="addView" class="card">
+        <form id="addForm" novalidate>
+          <label for="sender">Your name</label>
+          <input
+            id="sender"
+            name="sender"
+            type="text"
+            autocomplete="name"
+            maxlength="80"
+            placeholder="So they know who it's from"
+            required
+          />
+
+          <label for="mood">When should this reach them?</label>
+          <select id="mood" name="mood">
+            <option value="">Any time</option>
+          </select>
+
+          <label for="text">Your message</label>
+          <textarea
+            id="text"
+            name="text"
+            rows="5"
+            maxlength="4000"
+            placeholder="Anything you want them to hear."
+          ></textarea>
+
+          <fieldset class="recorder">
+            <legend>Voice note <span class="optional">(optional)</span></legend>
+
+            <div class="timer" id="timer" aria-live="polite">0:00</div>
+
+            <div class="buttons">
+              <button type="button" id="recordBtn" class="big rec">● Record</button>
+              <button type="button" id="stopBtn" class="big" disabled>■ Stop</button>
+            </div>
+
+            <audio id="playback" controls hidden></audio>
+
+            <div class="buttons">
+              <button type="button" id="rerecordBtn" class="ghost" hidden>↺ Re-record</button>
+            </div>
+
+            <p id="recMsg" class="hint" role="status"></p>
+          </fieldset>
+
+          <button type="submit" id="submitBtn" class="primary">Send this</button>
+          <p id="formMsg" class="status" role="status"></p>
+        </form>
+      </section>
+
+      <div class="adminbar">
+        <button type="button" id="adminToggle" class="ghost">I'm the admin</button>
+      </div>
+
+      <section id="adminView" class="card" hidden>
+        <div class="adminhead">
+          <h2>Everything that's here</h2>
+          <button type="button" id="adminRefresh" class="ghost small">Refresh</button>
+        </div>
+        <div id="adminContent">
+          <p class="hint">Loading…</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

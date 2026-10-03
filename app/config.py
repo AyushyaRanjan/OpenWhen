@@ -41,6 +41,13 @@ class Settings:
     min_match_score: float
     keep_alive: str
     use_model_safety_check: bool = True
+    admin_passcode: str = ""
+    # Optional. The watchdog uses these; empty/unset keeps it quiet. The ntfy
+    # base URL defaults to a self-hosted address so no alert ever leaves the
+    # local network by accident. See AGENTS.md's no-external-API rule.
+    health_url: str = "http://127.0.0.1:8000/api/health"
+    ntfy_url: str = "http://127.0.0.1:8080"
+    ntfy_topic: str = ""
 
 
 def _resolve_config_path() -> Path:
@@ -89,6 +96,16 @@ def load_settings() -> Settings:
         min_match_score=float(raw["min_match_score"]),
         keep_alive=raw["keep_alive"],
         use_model_safety_check=bool(raw.get("use_model_safety_check", True)),
+        admin_passcode=str(raw.get("admin_passcode", "") or ""),
+        health_url=str(
+            raw.get("health_url", "http://127.0.0.1:8000/api/health")
+            or "http://127.0.0.1:8000/api/health"
+        ),
+        ntfy_url=str(
+            raw.get("ntfy_url", "http://127.0.0.1:8080")
+            or "http://127.0.0.1:8080"
+        ),
+        ntfy_topic=str(raw.get("ntfy_topic", "") or ""),
     )
 
 

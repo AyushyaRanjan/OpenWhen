@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import BASE_DIR
+from app.routes import feel, items, meta
 
 log = logging.getLogger(__name__)
 
@@ -19,8 +20,16 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+app.include_router(items.router)
+app.include_router(feel.router)
+app.include_router(meta.router)
+
+
 # Any API router goes above this line, not below.
 
+_MEDIA_DIR = BASE_DIR / "media"
+if _MEDIA_DIR.is_dir():
+    app.mount("/media", StaticFiles(directory=_MEDIA_DIR), name="media")
 
 _STATIC_DIR = BASE_DIR / "static"
 if _STATIC_DIR.is_dir():

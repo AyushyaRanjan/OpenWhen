@@ -1,0 +1,10 @@
+[
+  { "mood": "lonely", "text": "It's late and everyone's asleep." },
+  { "mood": "sad", "text": "I miss how things used to be." },
+  { "mood": "anxious", "text": "My chest feels tight and I can't settle." },
+  { "mood": "overwhelmed", "text": "So much to do and I can't start any of it." },
+  { "mood": "tired", "text": "I slept badly and everything feels heavy." },
+  { "mood": "numb", "text": "" },
+  { "mood": "hopeless", "text": "It feels like nothing will change." },
+  { "mood": "okay-but-flat", "text": "Nothing's wrong, I just feel grey." }
+]

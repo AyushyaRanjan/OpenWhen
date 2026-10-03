@@ -171,7 +171,7 @@ async def model_crisis_check(text: str) -> bool:
     layer is never disabled by a model failure.
     """
     try:
-        resp = await chat(
+        content = await chat(
             messages=[
                 {
                     "role": "user",
@@ -182,10 +182,11 @@ async def model_crisis_check(text: str) -> bool:
             temperature=0,
             keep_alive=settings.keep_alive,
         )
-    except Exception:
+    except Exception as exc:
         return False
 
-    content = resp.get("content") if isinstance(resp, dict) else ""
+    if isinstance(content, dict):
+        content = content.get("content") or ""
     if not content or not isinstance(content, str):
         return False
 
@@ -214,20 +215,39 @@ def _get_use_model() -> bool:
         return True
 
 
-def check(text: str) -> bool:
-    """Keyword-first entry point. Model pass is optional via config."""
+async def acheck(text: str) -> bool:
+    """Async entry point for FastAPI routes.
+
+    Routes must use this: calling the sync check() from inside a running event
+    loop cannot await the model pass, so the second pass would silently never
+    run. Keyword layer still short-circuits everything.
+    """
     if is_crisis(text):
         return True
 
-    use_model = _get_use_model()
+    if not _get_use_model():
+        return False
 
-    if not use_model:
+    return await model_crisis_check(text)
+
+
+def check(text: str) -> bool:
+    """Sync entry point, for scripts and tests.
+
+    If it is called from inside a running event loop it stops after the keyword
+    layer rather than blocking the loop or leaving an un-awaited coroutine.
+    Routes should await acheck() instead.
+    """
+    if is_crisis(text):
+        return True
+
+    if not _get_use_model():
         return False
 
     try:
-        return asyncio.get_event_loop().run_until_complete(model_crisis_check(text))
+        asyncio.get_running_loop()
     except RuntimeError:
-        # No event loop running (e.g. sync context); create a new one.
+        # No loop here, so it is safe to drive the coroutine to completion.
         return asyncio.run(model_crisis_check(text))
-    except Exception:
-        return False
+    # Already inside a loop: cannot block. Routes should use acheck().
+    return False
