@@ -3,7 +3,7 @@
    responses and never stores a voice note the friend did not save. See
    AGENTS.md. */
 
-var CACHE = "openwhen-shell-v6";
+var CACHE = "openwhen-shell-v7";
 var FAV_CACHE = "openwhen-favourites-v1";
 var RECENT_CACHE = "openwhen-recent-v1";
 var FAV_PREFIX = "/__fav__/";

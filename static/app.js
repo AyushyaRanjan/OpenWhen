@@ -640,17 +640,110 @@
 
   function renderThinking() {
     clearResult();
-    $("result").appendChild(make("p", "thinking", "Finding something kind\u2026"));
+    // Three softly bouncing dots, with the words left for screen readers.
+    var box = make("div", "thinking");
+    for (var i = 0; i < 3; i++) {
+      var dot = make("span", "loading-dot");
+      dot.setAttribute("aria-hidden", "true");
+      box.appendChild(dot);
+    }
+    box.appendChild(make("span", "sr-only", "Finding something kind\u2026"));
+    $("result").appendChild(box);
   }
 
   function setSending(isSending) {
     var btn = $("send");
-    btn.disabled = isSending;
-    btn.textContent = isSending ? "Finding something kind\u2026" : "Send";
+    if (!btn) return;
+    if (isSending) {
+      btn.disabled = true;
+      btn.textContent = "Finding something kind\u2026";
+    } else {
+      btn.textContent = "Send";
+      updateSendState();
+    }
   }
 
-  function messageCard(item) {
-    var card = make("div", "card");
+  function fmtTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) seconds = 0;
+    var mins = Math.floor(seconds / 60);
+    var secs = Math.floor(seconds % 60);
+    return mins + ":" + (secs < 10 ? "0" : "") + secs;
+  }
+
+  // A quiet, hand-built player so a voice note feels like part of the letter
+  // rather than a browser control. The audio file itself is still served from
+  // /media/ and works with no network once it has been kept.
+  function audioPlayer(src) {
+    var wrap = make("div", "player");
+
+    var audio = make("audio", "player-audio");
+    audio.preload = "none";
+    audio.src = src;
+
+    var btn = make("button", "player-btn", "\u25B6");
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Play voice note");
+
+    var seek = make("input", "player-seek");
+    seek.type = "range";
+    seek.min = "0";
+    seek.max = "100";
+    seek.value = "0";
+    seek.setAttribute("aria-label", "Seek within voice note");
+
+    var time = make("span", "player-time", "0:00");
+
+    btn.addEventListener("click", function () {
+      if (audio.paused) {
+        var playing = audio.play();
+        if (playing && playing.catch) playing.catch(function () {});
+      } else {
+        audio.pause();
+      }
+    });
+
+    audio.addEventListener("play", function () {
+      btn.textContent = "\u23F8";
+      btn.setAttribute("aria-label", "Pause voice note");
+    });
+    audio.addEventListener("pause", function () {
+      btn.textContent = "\u25B6";
+      btn.setAttribute("aria-label", "Play voice note");
+    });
+    audio.addEventListener("ended", function () {
+      btn.textContent = "\u25B6";
+      seek.value = "0";
+    });
+    audio.addEventListener("loadedmetadata", function () {
+      time.textContent = fmtTime(audio.duration);
+    });
+    audio.addEventListener("timeupdate", function () {
+      var total = audio.duration;
+      if (total && isFinite(total)) {
+        seek.value = String((audio.currentTime / total) * 100);
+      }
+      time.textContent = fmtTime(audio.currentTime);
+    });
+    seek.addEventListener("input", function () {
+      var total = audio.duration;
+      if (total && isFinite(total)) {
+        audio.currentTime = (Number(seek.value) / 100) * total;
+      }
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(seek);
+    wrap.appendChild(time);
+    wrap.appendChild(audio);
+    return wrap;
+  }
+
+  function messageCard(item, index) {
+    var card = make("div", "card letter");
+    if (typeof index === "number") {
+      // Stagger the letters so they arrive one after another, gently.
+      card.style.animationDelay = index * 70 + "ms";
+    }
 
     var head = make("div", "card-head");
     if (item.sender && item.sender !== "me") {
@@ -667,11 +760,7 @@
       card.appendChild(make("p", "text", item.text));
     }
     if (item.audio) {
-      var audio = make("audio", null);
-      audio.controls = true;
-      audio.preload = "none";
-      audio.src = "/media/" + encodeURIComponent(item.audio);
-      card.appendChild(audio);
+      card.appendChild(audioPlayer("/media/" + encodeURIComponent(item.audio)));
     }
     return card;
   }
@@ -700,8 +789,8 @@
       );
     }
 
-    messages.forEach(function (item) {
-      result.appendChild(messageCard(item));
+    messages.forEach(function (item, i) {
+      result.appendChild(messageCard(item, i));
     });
 
     if (wins.length) {
@@ -841,21 +930,81 @@
     return String(mood).replace(/-/g, " ");
   }
 
+  // A small, human face for each feeling the config may name. Unknown feelings
+  // still get a soft card; the tint classes live in app.css.
+  var MOOD_ICONS = {
+    lonely: "\uD83C\uDF19",
+    sad: "\uD83C\uDF27",
+    anxious: "\uD83C\uDF00",
+    overwhelmed: "\uD83C\uDF0A",
+    tired: "\uD83D\uDE34",
+    numb: "\uD83C\uDF2B",
+    hopeless: "\uD83C\uDF11",
+    "okay-but-flat": "\u26C5",
+  };
+  var MOOD_ICON_FALLBACK = "\uD83E\uDD0D";
+
+  function moodSlug(mood) {
+    return String(mood)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function moodClass(mood) {
+    var slug = moodSlug(mood);
+    return Object.prototype.hasOwnProperty.call(MOOD_ICONS, slug)
+      ? "mood--" + slug
+      : "mood--other";
+  }
+
+  // Good morning, good afternoon, good evening - whichever fits right now.
+  function greetingFor(name) {
+    var hour = new Date().getHours();
+    var part =
+      hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    return name ? part + ", " + name + "." : part + ".";
+  }
+
+  function renderGreeting() {
+    var el = $("greeting");
+    if (el) el.textContent = greetingFor(config.friend_name);
+  }
+
+  // The send button stays dim until there is something to send: a feeling, or
+  // a few words of their own.
+  function updateSendState() {
+    var btn = $("send");
+    if (!btn) return;
+    var field = $("more");
+    var typed = field && field.value ? field.value.trim() : "";
+    btn.disabled = !selectedMood && !typed;
+  }
+
   function renderMoods() {
     var box = $("moods");
     box.textContent = "";
     (config.moods || []).forEach(function (mood) {
-      var btn = make("button", "mood", prettyMood(mood));
+      var slug = moodSlug(mood);
+      var btn = make("button", "mood " + moodClass(mood));
       btn.type = "button";
       btn.setAttribute("aria-pressed", "false");
+
+      var icon = make("span", "mood-icon", MOOD_ICONS[slug] || MOOD_ICON_FALLBACK);
+      icon.setAttribute("aria-hidden", "true");
+      btn.appendChild(icon);
+      btn.appendChild(make("span", "mood-label", prettyMood(mood)));
+
       btn.addEventListener("click", function () {
         selectedMood = mood;
         Array.prototype.forEach.call(box.children, function (child) {
           child.setAttribute("aria-pressed", child === btn ? "true" : "false");
         });
+        updateSendState();
       });
       box.appendChild(btn);
     });
+    updateSendState();
   }
 
   function loadConfig() {
@@ -869,17 +1018,13 @@
         config.moods = data.moods || [];
         config.resting_message = data.resting_message || "";
         writeCachedConfig();
-        $("greeting").textContent = config.friend_name
-          ? "Hi, " + config.friend_name + "."
-          : "Hi.";
+        renderGreeting();
         renderMoods();
         prefetchRecent();
       })
       .catch(function (err) {
         // Offline: fall back to whatever the phone last remembered.
-        $("greeting").textContent = config.friend_name
-          ? "Hi, " + config.friend_name + "."
-          : "Hi.";
+        renderGreeting();
         renderMoods();
         if (isOfflineError(err)) {
           goResting();
@@ -920,6 +1065,8 @@
     renderSaved();
 
     bind("send", doFeel);
+    var more = $("more");
+    if (more) more.addEventListener("input", updateSendState);
     bind("again", function () {
       selectedMood = lastQuery.mood || selectedMood;
       $("more").value = lastQuery.text || "";

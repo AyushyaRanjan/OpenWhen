@@ -9,8 +9,8 @@
       content="A quiet place to find a few kind words when you need them."
     />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#fbf6f1" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#221a17" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#faf4ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f1815" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -41,15 +41,20 @@
           placeholder="You can write as little or as much as you like."
         ></textarea>
 
-        <button id="send" class="btn primary" type="button">Send</button>
+        <button id="send" class="btn primary" type="button" disabled>Send</button>
 
         <div class="secondary-row">
-          <button id="openWin" class="btn quiet" type="button">Log a win</button>
-          <button id="openChallenge" class="btn quiet" type="button">
-            I have a challenge
+          <button id="openWin" class="action-card" type="button">
+            <span class="action-icon" aria-hidden="true">&#128221;</span>
+            <span class="action-caption">Log a win</span>
           </button>
-          <button id="openSaved" class="btn quiet" type="button">
-            Saved for later
+          <button id="openChallenge" class="action-card" type="button">
+            <span class="action-icon" aria-hidden="true">&#127793;</span>
+            <span class="action-caption">I have a challenge</span>
+          </button>
+          <button id="openSaved" class="action-card" type="button">
+            <span class="action-icon" aria-hidden="true">&#128155;</span>
+            <span class="action-caption">Saved for later</span>
           </button>
         </div>
 

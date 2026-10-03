@@ -80,7 +80,7 @@ Leave this window open. As long as it is open, the app is running. When you want
 to stop the app, click in the window and press **Ctrl + C**.
 
 Check it worked: open `http://127.0.0.1:8000` in the laptop's browser. You should
-see the greyed-out sentence "Hi. How are you feeling?" — that's the home screen.
+see a warm greeting over the question "How are you feeling?" — that's the home screen.
 
 ### Step 2: Install and sign in to Tailscale
 
@@ -199,7 +199,7 @@ Send your friend the `https://...ts.net/` address from Step 5. Then they:
 4. Open their normal browser (Chrome on Android, Safari on iPhone) and go to
    your `https://...ts.net/` address.
 
-They should see the same "Hi. How are you feeling?" screen you see on the laptop.
+They should see the same warm home screen you see on the laptop.
 If they do, you are done.
 
 ---

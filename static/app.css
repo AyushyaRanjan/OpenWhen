@@ -1,32 +1,164 @@
-/* Open When - friend-facing app. Warm, quiet, mobile-first. */
+/* Open When - friend-facing app. Warm, calm, hand-made. Mobile-first.
+   Every colour, radius, shadow and spacing step is a token so the light and
+   dark themes stay in step and nothing is invented twice. */
 
 :root {
-  --bg: #fbf6f1;
-  --surface: #ffffff;
-  --surface-2: #f6ece4;
-  --text: #3b2b26;
-  --muted: #7d6a62;
+  --font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+
+  /* Warm light: cream, soft terracotta, muted sage. */
+  --bg: #faf4ee;
+  --bg-2: #f3e7db;
+  --bg-3: #efe0d2;
+  --surface: #fffdfb;
+  --surface-2: #f6ece2;
+  --paper: #fffaf3;
+  --text: #3a2a24;
+  --text-strong: #2b1d18;
+  --muted: #7c6a61;
   --accent: #c9705a;
   --accent-strong: #b25c47;
   --accent-soft: #f3d9cf;
-  --border: #ecdcd2;
-  --shadow: 0 6px 20px rgba(90, 55, 40, 0.08);
-  --radius: 16px;
+  --sage: #8fae8b;
+  --sage-soft: #e6efe2;
+  --amber: #cf9a53;
+  --border: #ecdccf;
+  --on-accent: #fffaf7;
+
+  --glow-a: rgba(201, 112, 90, 0.14);
+  --glow-b: rgba(143, 174, 139, 0.12);
+  --glow-c: rgba(240, 184, 163, 0.16);
+  --h1-glow: rgba(201, 112, 90, 0.16);
+
+  --shadow-sm: 0 1px 3px rgba(90, 55, 40, 0.07);
+  --shadow-md: 0 8px 24px rgba(90, 55, 40, 0.1);
+  --shadow-lg: 0 18px 45px rgba(90, 55, 40, 0.15);
+  --glow: 0 0 26px rgba(201, 112, 90, 0.18);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 34px;
+  --space-6: 48px;
+
+  --focus: 0 0 0 3px rgba(201, 112, 90, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #221a17;
-    --surface: #2c221e;
-    --surface-2: #362a25;
-    --text: #f4eae4;
+    --bg: #1f1815;
+    --bg-2: #261d19;
+    --bg-3: #2e231e;
+    --surface: #2b211d;
+    --surface-2: #352a24;
+    --paper: #322620;
+    --text: #f3e8e1;
+    --text-strong: #fdf4ef;
     --muted: #c3aca2;
-    --accent: #e7a38c;
-    --accent-strong: #f0b8a3;
-    --accent-soft: #43302a;
+    --accent: #f0b8a3;
+    --accent-strong: #f7cdbc;
+    --accent-soft: #45312a;
+    --sage: #a7c4a1;
+    --sage-soft: #2f3a2c;
+    --amber: #e0b878;
     --border: #3d2f29;
-    --shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-    --radius: 16px;
+    --on-accent: #2b1d18;
+
+    --glow-a: rgba(240, 184, 163, 0.16);
+    --glow-b: rgba(167, 196, 161, 0.1);
+    --glow-c: rgba(240, 184, 163, 0.12);
+    --h1-glow: rgba(240, 184, 163, 0.18);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.38);
+    --shadow-lg: 0 18px 45px rgba(0, 0, 0, 0.45);
+    --glow: 0 0 26px rgba(240, 184, 163, 0.22);
+
+    --focus: 0 0 0 3px rgba(240, 184, 163, 0.55);
+  }
+}
+
+/* Each feeling gets its own soft tint, and a stronger ink for the chosen one. */
+.mood--lonely {
+  --mood-tint: #e8eaf4;
+  --mood-ink: #4b5680;
+}
+.mood--sad {
+  --mood-tint: #e3ecf4;
+  --mood-ink: #40607a;
+}
+.mood--anxious {
+  --mood-tint: #e0eef0;
+  --mood-ink: #2f6367;
+}
+.mood--overwhelmed {
+  --mood-tint: #e5eee2;
+  --mood-ink: #4a6b45;
+}
+.mood--tired {
+  --mood-tint: #f4ecdb;
+  --mood-ink: #7c6440;
+}
+.mood--numb {
+  --mood-tint: #ecebee;
+  --mood-ink: #5d5a66;
+}
+.mood--hopeless {
+  --mood-tint: #ece3ef;
+  --mood-ink: #654771;
+}
+.mood--okay-but-flat {
+  --mood-tint: #f6f0d8;
+  --mood-ink: #7c6c2f;
+}
+.mood--other {
+  --mood-tint: #f3e9e2;
+  --mood-ink: #6f5a4e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mood--lonely {
+    --mood-tint: #2a2d3f;
+    --mood-ink: #bcc3e4;
+  }
+  .mood--sad {
+    --mood-tint: #24313d;
+    --mood-ink: #a9c5dc;
+  }
+  .mood--anxious {
+    --mood-tint: #223a3c;
+    --mood-ink: #9fd0cf;
+  }
+  .mood--overwhelmed {
+    --mood-tint: #2a3826;
+    --mood-ink: #b3d0aa;
+  }
+  .mood--tired {
+    --mood-tint: #3a2f22;
+    --mood-ink: #dcc79b;
+  }
+  .mood--numb {
+    --mood-tint: #2f2d35;
+    --mood-ink: #c3c0cc;
+  }
+  .mood--hopeless {
+    --mood-tint: #332a3a;
+    --mood-ink: #d3b6de;
+  }
+  .mood--okay-but-flat {
+    --mood-tint: #3a3420;
+    --mood-ink: #e0d08f;
+  }
+  .mood--other {
+    --mood-tint: #352a24;
+    --mood-ink: #d8bfae;
   }
 }
 
@@ -43,13 +175,22 @@ body {
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 17px;
-  line-height: 1.55;
+  line-height: 1.6;
   -webkit-tap-highlight-color: transparent;
+  /* A few faint layers of warmth rather than one flat colour. */
+  background-color: var(--bg);
+  background-image: radial-gradient(
+      1200px 620px at 50% -12%,
+      var(--glow-a),
+      transparent 60%
+    ),
+    radial-gradient(900px 520px at 108% 0%, var(--glow-b), transparent 55%),
+    radial-gradient(760px 540px at -8% 104%, var(--glow-c), transparent 55%),
+    linear-gradient(180deg, var(--bg), var(--bg-2) 60%, var(--bg-3));
+  background-attachment: fixed;
 }
 
 /* Overlays lock the page behind them without shifting it. */
@@ -67,10 +208,23 @@ body.modal-open {
     max(20px, env(safe-area-inset-left));
 }
 
+/* Only visible to screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------- Screen transitions ---------- */
 
 .screen:not([hidden]) {
-  animation: rise-in 0.28s ease both;
+  animation: rise-in 0.32s ease both;
 }
 
 @keyframes rise-in {
@@ -139,7 +293,7 @@ body.modal-open {
   margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -180,8 +334,8 @@ body.modal-open {
   max-width: 460px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 26px 22px 20px;
 }
 
@@ -205,8 +359,10 @@ body.modal-open {
 
 .welcome-title {
   margin: 0 0 10px;
-  font-size: 1.4rem;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
   line-height: 1.25;
+  color: var(--text-strong);
 }
 
 .welcome-text {
@@ -216,7 +372,7 @@ body.modal-open {
 }
 
 .overlay-foot {
-  margin-top: 24px;
+  margin-top: var(--space-4);
 }
 
 .welcome-dots {
@@ -323,59 +479,108 @@ body.modal-open {
 
 /* ---------- Home ---------- */
 
+.home {
+  position: relative;
+}
+
+/* A faint, warm glow sitting behind the heading. */
+.home::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: -18%;
+  right: -18%;
+  height: 240px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    var(--h1-glow),
+    transparent 72%
+  );
+}
+
 .greeting {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
 }
 
 .h1 {
-  margin: 0 0 22px;
-  font-size: 1.7rem;
-  line-height: 1.25;
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.2;
   letter-spacing: -0.01em;
+  color: var(--text-strong);
 }
 
 .h2 {
   margin: 4px 0 6px;
-  font-size: 1.35rem;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  color: var(--text-strong);
 }
+
+/* ---------- Feelings ---------- */
 
 .moods {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 24px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .mood {
-  min-height: 52px;
-  padding: 12px 14px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border-radius: var(--radius-md);
+  background: var(--mood-tint, var(--surface));
   color: var(--text);
   font: inherit;
-  font-size: 1rem;
-  text-transform: capitalize;
+  font-size: 0.98rem;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.08s ease;
+  transition: transform 0.12s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease, background 0.18s ease;
+}
+
+.mood-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.mood-label {
+  text-transform: capitalize;
 }
 
 .mood:hover {
-  background: var(--surface-2);
+  border-color: var(--mood-ink, var(--accent-soft));
 }
 
 .mood:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
 
 .mood[aria-pressed="true"] {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent-strong);
+  border-color: var(--mood-ink, var(--accent));
+  color: var(--mood-ink, var(--accent-strong));
   font-weight: 600;
+  box-shadow: 0 0 0 2px var(--mood-ink, var(--accent)),
+    0 0 22px var(--mood-tint, var(--accent-soft));
+  transform: translateY(-1px) scale(1.02);
+}
+
+.mood[aria-pressed="true"]:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* ---------- Forms ---------- */
@@ -391,61 +596,83 @@ textarea {
   width: 100%;
   padding: 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--text);
   font: inherit;
+  line-height: 1.55;
   resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
 }
 
 textarea:focus,
 .btn:focus-visible,
 .mood:focus-visible,
+.action-card:focus-visible,
+.player-btn:focus-visible,
+.player-seek:focus-visible,
 .crisis-call:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus);
 }
 
 /* ---------- Buttons ---------- */
 
 .btn {
-  min-height: 48px;
+  min-height: 50px;
   padding: 12px 18px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.08s ease, opacity 0.15s ease;
+    transform 0.08s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn:active {
   transform: scale(0.99);
 }
 
-.btn:disabled {
-  opacity: 0.65;
-  cursor: default;
-}
-
 .btn.primary {
   display: block;
   width: 100%;
-  margin-top: 16px;
-  background: var(--accent);
-  color: #fff;
+  margin-top: var(--space-3);
+  background-color: var(--accent);
+  background-image: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: var(--on-accent);
   font-weight: 600;
+  box-shadow: var(--shadow-md), 0 6px 18px rgba(201, 112, 90, 0.28);
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: var(--accent-strong);
+  background-image: linear-gradient(135deg, var(--accent-strong), var(--accent));
+}
+
+.btn.primary:disabled {
+  background-image: none;
+  background-color: var(--surface-2);
+  color: var(--muted);
+  box-shadow: none;
+  opacity: 0.7;
+  cursor: default;
+}
+
+.btn:disabled {
+  cursor: default;
 }
 
 .btn.quiet {
   background: var(--surface);
   border-color: var(--border);
   color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn.quiet:hover {
@@ -459,52 +686,114 @@ textarea:focus,
   background: transparent;
   border-color: transparent;
   color: var(--muted);
+  box-shadow: none;
 }
 
 .btn.back:hover {
   color: var(--text);
 }
 
-.secondary-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.secondary-row .btn {
-  flex: 1 1 calc(50% - 5px);
-}
-
 .muted {
   color: var(--muted);
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-3);
+}
+
+/* ---------- Secondary action cards ---------- */
+
+.secondary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 88px;
+  padding: 14px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.action-card:hover {
+  background: var(--surface-2);
+  box-shadow: var(--shadow-md);
+}
+
+.action-card:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.action-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.action-caption {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--muted);
 }
 
 /* ---------- Results ---------- */
 
 .result {
-  margin-top: 22px;
+  margin-top: var(--space-4);
 }
 
 .lead {
-  margin: 0 0 16px;
-  font-size: 1.05rem;
-  animation: fade-in 0.3s ease both;
+  margin: 0 0 var(--space-3);
+  font-size: 1.08rem;
+  line-height: 1.55;
+  animation: fade-in 0.4s ease both;
 }
 
+/* Three softly bouncing dots while a note is found. */
 .thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
-  color: var(--muted);
-  animation: breathe 1.6s ease-in-out infinite;
+  padding: 6px 0;
 }
 
-@keyframes breathe {
+.loading-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-bounce 1.25s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loading-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dot-bounce {
   0%,
+  80%,
   100% {
+    transform: translateY(0);
     opacity: 0.45;
   }
-  50% {
+  40% {
+    transform: translateY(-6px);
     opacity: 1;
   }
 }
@@ -512,18 +801,49 @@ textarea:focus,
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   padding: 16px;
   margin-bottom: 12px;
-  animation: rise-in 0.3s ease both;
+}
+
+/* A note from someone who loves them, laid out like a short letter. */
+.card.letter {
+  position: relative;
+  padding: 18px 18px 16px;
+  background-image: linear-gradient(180deg, var(--paper), var(--surface));
+  box-shadow: var(--shadow-md);
+  animation: letter-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.card.letter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(var(--accent-soft), transparent);
+}
+
+@keyframes letter-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .card .sender {
   margin: 0 0 6px;
-  color: var(--accent-strong);
-  font-size: 0.9rem;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
   font-weight: 600;
+  color: var(--accent-strong);
 }
 
 .card-head .sender,
@@ -535,22 +855,77 @@ textarea:focus,
 .card .text {
   margin: 0;
   white-space: pre-wrap;
+  line-height: 1.6;
 }
 
-.card audio {
-  width: 100%;
-  margin-top: 12px;
+/* ---------- Voice note player ---------- */
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
 }
+
+.player-audio {
+  display: none;
+}
+
+.player-btn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.player-btn:hover {
+  background: var(--accent-strong);
+}
+
+.player-btn:active {
+  transform: scale(0.94);
+}
+
+.player-seek {
+  flex: 1 1 auto;
+  height: 4px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.player-time {
+  flex: none;
+  min-width: 34px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ---------- Wins ---------- */
 
 .remember {
-  background: var(--surface-2);
+  background: var(--sage-soft);
+  border-color: transparent;
 }
 
 .remember .title {
   margin: 0 0 10px;
   color: var(--muted);
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -580,7 +955,7 @@ textarea:focus,
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--muted);
   font-size: 1.1rem;
@@ -600,14 +975,9 @@ textarea:focus,
   background: var(--accent-soft);
 }
 
-.fav-btn:focus-visible {
-  outline: 2px solid var(--accent-strong);
-  outline-offset: 2px;
-}
-
 .saved-lead {
-  margin: 0 0 16px;
-  font-size: 1.05rem;
+  margin: 0 0 var(--space-3);
+  font-size: 1.08rem;
 }
 
 .saved-list .card {
@@ -635,18 +1005,20 @@ textarea:focus,
 }
 
 .step-card {
-  margin-top: 20px;
+  margin-top: var(--space-4);
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   animation: rise-in 0.3s ease both;
 }
 
 .step-text {
   margin: 0 0 18px;
-  font-size: 1.15rem;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1.45;
 }
 
 .step-actions {
@@ -659,7 +1031,7 @@ textarea:focus,
   margin-top: 0;
 }
 
-/* ---------- Crisis ---------- */
+/* ---------- Crisis (content and phone buttons stay as they were) ---------- */
 
 .crisis {
   padding-top: 24px;
@@ -667,7 +1039,8 @@ textarea:focus,
 
 .crisis-message {
   margin: 0 0 26px;
-  font-size: 1.15rem;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
   line-height: 1.6;
 }
 
@@ -682,9 +1055,9 @@ textarea:focus,
   justify-content: center;
   min-height: 60px;
   padding: 14px 18px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 1.05rem;
   font-weight: 600;
   text-decoration: none;
@@ -708,27 +1081,54 @@ body.crisis .footer {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 0 0 10px;
-  font-size: 0.82rem;
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
+/* A slow, quiet pulse where a hard dot used to be. */
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #8fae8b;
-  box-shadow: 0 0 0 3px rgba(143, 174, 139, 0.18);
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--sage);
+  color: var(--sage);
+}
+
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: status-pulse 2.8s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.7;
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 0;
+  }
 }
 
 .status-line.is-offline .status-dot {
-  background: #d9a86a;
-  box-shadow: 0 0 0 3px rgba(217, 168, 106, 0.18);
+  background: var(--amber);
+  color: var(--amber);
 }
 
 .status-line.is-checking .status-dot {
   background: var(--muted);
-  box-shadow: 0 0 0 3px rgba(125, 106, 98, 0.15);
+  color: var(--muted);
 }
 
 /* ---------- Footer ---------- */
@@ -736,17 +1136,19 @@ body.crisis .footer {
 .footer {
   max-width: 560px;
   margin: 0 auto;
-  padding: 20px max(20px, env(safe-area-inset-right))
-    max(34px, env(safe-area-inset-bottom))
+  padding: 22px max(20px, env(safe-area-inset-right))
+    max(36px, env(safe-area-inset-bottom))
     max(20px, env(safe-area-inset-left));
 }
 
 .footer p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
   text-align: center;
+  opacity: 0.85;
 }
 
 /* ---------- Motion preferences ---------- */

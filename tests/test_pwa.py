@@ -179,7 +179,7 @@ def test_service_worker_applies_updates_without_a_tap():
     install = js[js.index('addEventListener("install"') : js.index('addEventListener("activate"')]
     assert "skipWaiting()" in install, "install must skip waiting"
     assert "client.navigate" in js, "activate must refresh open pages"
-    assert "openwhen-shell-v6" in js
+    assert "openwhen-shell-v7" in js
 
 
 def test_unknown_path_serves_the_friendly_404_page():
@@ -285,3 +285,78 @@ def test_shell_has_no_external_resources():
         text = (STATIC / name).read_text(encoding="utf-8")
         for bad in ("http://", "https://", "//cdn"):
             assert bad not in text, f"{name} references {bad}"
+
+
+def test_theme_is_tokenised_with_warm_light_and_dark_sides():
+    css = _flat((STATIC / "app.css").read_text(encoding="utf-8"))
+    # Colour, radius, shadow and spacing are all tokens, not one-off values.
+    for token in [
+        "prefers-color-scheme: dark",
+        "--bg:",
+        "--surface:",
+        "--accent:",
+        "--radius-md:",
+        "--space-3:",
+        "--shadow-md:",
+    ]:
+        assert token in css, token
+    # Serif headings, clean system sans body.
+    assert "Georgia" in css
+    assert "Iowan Old Style" in css
+    # A layered gradient, not a flat fill.
+    assert "radial-gradient" in css
+    assert "linear-gradient" in css
+    # Every feeling carries its own soft tint.
+    assert ".mood--sad" in css
+    assert "mood--okay-but-flat" in css
+
+
+def test_greeting_changes_with_the_time_of_day():
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    assert "Good morning" in js
+    assert "Good afternoon" in js
+    assert "Good evening" in js
+    assert "greetingFor" in js
+
+
+def test_send_starts_disabled_until_there_is_something_to_send():
+    page = _flat((STATIC / "index.html").read_text(encoding="utf-8"))
+    assert 'id="send"' in page
+    assert "disabled" in page
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    assert "updateSendState" in js
+    assert 'addEventListener("input", updateSendState)' in js
+
+
+def test_secondary_actions_are_icon_cards():
+    page = _flat((STATIC / "index.html").read_text(encoding="utf-8"))
+    css = _flat((STATIC / "app.css").read_text(encoding="utf-8"))
+    for needle in ["action-card", "action-icon", "action-caption"]:
+        assert needle in page, needle
+        assert "." + needle in css, needle
+    # The three ids and their warm captions are still there.
+    for needle in ["openWin", "openChallenge", "openSaved"]:
+        assert 'id="' + needle + '"' in page, needle
+
+
+def test_notes_arrive_as_letters_with_a_hand_built_player():
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    css = _flat((STATIC / "app.css").read_text(encoding="utf-8"))
+    assert "card letter" in js
+    assert "audioPlayer" in js
+    assert "/media/" in js
+    for needle in ["player-btn", "player-seek", "player-time"]:
+        assert needle in js, needle
+        assert "." + needle in css, needle
+    assert "letter-in" in css
+
+
+def test_status_glows_and_loading_bounces_but_motion_can_be_cut():
+    css = _flat((STATIC / "app.css").read_text(encoding="utf-8"))
+    assert "status-pulse" in css
+    assert "dot-bounce" in css
+    assert "prefers-reduced-motion: reduce" in css
+    assert "animation-iteration-count: 1" in css
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    assert "loading-dot" in js
+    assert "sr-only" in js
