@@ -157,3 +157,95 @@ def test_win_crisis_blocks(tmp_path, monkeypatch):
     j = r.json()
     assert j["crisis"] is True
     assert called["n"] == 0
+
+
+def test_win_is_saved_with_a_vector_so_it_can_come_back(tmp_path, monkeypatch):
+    import numpy as np
+
+    from app import db
+
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+
+    async def fake_embed(text: str):
+        return np.array([1.0, 0.0], dtype=np.float32)
+
+    monkeypatch.setattr(ollama_client, "embed", fake_embed)
+
+    client = TestClient(main.app)
+    r = client.post("/api/win", json={"text": "made it to the shower today"})
+    assert r.status_code == 200 and r.json()["ok"] is True
+
+    with db.connect(db_path) as conn:
+        rows = db.get_all_with_embeddings(conn, "win")
+    assert len(rows) == 1
+    assert rows[0][0]["text"] == "made it to the shower today"
+
+
+def test_win_is_still_saved_when_ollama_is_down(tmp_path, monkeypatch):
+    from app import db
+
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+
+    async def dead_embed(*a, **k):
+        raise ollama_client.OllamaUnavailable()
+
+    monkeypatch.setattr(ollama_client, "embed", dead_embed)
+
+    client = TestClient(main.app)
+    r = client.post("/api/win", json={"text": "got out of bed"})
+    assert r.status_code == 200 and r.json()["ok"] is True
+
+    # Their words are kept even with no vector; the backfill tool can add one.
+    with db.connect(db_path) as conn:
+        rows = db.list_items(conn, "win")
+    assert [row["text"] for row in rows] == ["got out of bed"]
+    assert rows[0]["emb"] is None
+
+
+def test_feel_returns_a_win_on_a_mood_tap_alone(tmp_path, monkeypatch):
+    import numpy as np
+
+    from app import db
+
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(
+            conn, item_id="w1", kind="win", sender="me", text="finished the form",
+            emb=np.array([1.0, 0.0], dtype=np.float32), created=1000.0,
+        )
+
+    async def fake_embed(text: str):
+        return np.array([1.0, 0.0], dtype=np.float32)
+
+    async def fake_chat(*a, **k):
+        return "Something you did before."
+
+    monkeypatch.setattr(ollama_client, "embed", fake_embed)
+    monkeypatch.setattr(ollama_client, "chat", fake_chat)
+
+    client = TestClient(main.app)
+    r = client.post("/api/feel", json={"mood": "lonely", "text": ""})
+    assert r.status_code == 200
+    assert any(w["id"] == "w1" for w in r.json()["wins"])
+
+
+def test_wins_endpoint_lists_only_wins_without_embeddings(tmp_path, monkeypatch):
+    from app import db
+
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(conn, item_id="w1", kind="win", sender="me", text="older win", created=1000.0)
+        db.insert_item(conn, item_id="m1", kind="message", sender="A", text="a note", created=2000.0)
+        db.insert_item(conn, item_id="w2", kind="win", sender="me", text="newer win", created=3000.0)
+
+    client = TestClient(main.app)
+    r = client.get("/api/wins")
+    assert r.status_code == 200
+    got = r.json()["wins"]
+    assert [w["text"] for w in got] == ["newer win", "older win"]
+    assert all(w["kind"] == "win" for w in got)
+    assert all("emb" not in w for w in got)

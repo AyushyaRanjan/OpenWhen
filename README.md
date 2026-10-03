@@ -56,10 +56,11 @@ There are only a few moving parts.
 - **Ollama**, a local model runner, provides two things: a **chat model** that
   writes the short warm lead-in and the tiny step, and an **embedding model**
   that turns text into vectors for search.
-- **Search is simple math.** Each message is stored as a vector. When the friend
-  says how they feel, the app embeds that feeling and finds the closest messages
-  using cosine similarity (numpy). If nothing is close enough, it falls back to
-  the two most recent messages so there is always something kind to show.
+- **Search is simple math.** Each message *and each win* is stored as a vector.
+  When the friend says how they feel, the app embeds that feeling and finds the
+  closest items using cosine similarity (numpy). If nothing is close enough, it
+  falls back to the two most recent messages, and to one of the friend's own
+  wins, so there is always something kind to show.
 - **The frontend is plain HTML, CSS and JavaScript** — no framework and no build
   step. It is a PWA (a web app that can be added to the phone's home screen),
   with a hand-written manifest and service worker. The service worker caches
@@ -254,7 +255,12 @@ two things: every note it shows them is remembered, and whenever the app opens
 while the server is reachable it quietly fetches a few recent notes in the
 background (`GET /api/recent`), so there is something to show even if they never
 tapped a feeling first. These stay on the phone too. The friend's own wins are
-not remembered; the resting screen is about other people's words.
+kept out of *this* memory — the resting screen is about other people's words —
+but they have their own shelf: every win is logged with a vector so it can match
+later, and all of them appear under **Your wins** on the Saved screen, mirrored
+onto the phone so the shelf is there with no connection. A win comes back when
+the friend taps a feeling or writes something, and now and then when one is the
+closest thing to how they feel.
 
 When the phone cannot reach the little server — the laptop is off, asleep, or
 the app was stopped — the friend sees a calm screen with the human-written
@@ -313,7 +319,7 @@ Set-Location "C:\Disk E\Code\openWhen"
 python -m pytest -q
 ```
 
-A correct run ends with something like `91 passed` and no failures. The suite
+A correct run ends with something like `112 passed` and no failures. The suite
 covers the database, safety checks, search, the API routes, the admin passcode,
 the PWA shell, saved favourites and offline behaviour, the watchdog (with the
 network mocked), prompt loading, and the model-comparison tool. Many tests use
@@ -346,6 +352,11 @@ A few things worth knowing:
 - The server needs the embedding model reachable to add a note. If Ollama is not
   running, saving a note returns a clear "Ollama unavailable" message instead of
   failing silently.
+- Wins logged in the app are embedded on the spot so they can resurface later.
+  If a win was logged while Ollama was down it is saved but has no vector; run
+  `.\venv\Scripts\python.exe tools\embed_missing.py` once Ollama is back to fill
+  those in. It only touches wins, never the deliberately vectorless save-anyway
+  notes, and it only logs counts.
 - Voice notes and the database are personal. `media/` and `comfort.db` are
   ignored by git, and real recordings should never be committed. If you are
   contributing code, keep your own test audio local.
@@ -374,7 +385,7 @@ app/            the FastAPI server, safety check, search, and generation
 prompts/        the AI instructions, as plain editable text
 static/         the frontend: HTML, CSS, JS, PWA manifest and service worker
 tests/          the pytest suite
-tools/          development helpers and the server watchdog (icon maker, model comparison)
+tools/          development helpers and the server watchdog (icon maker, model comparison, win backfill)
 docs/           extra guides, including phone access
 config.example.json   template for your config.json
 safety_phrases.json   the crisis keyword list

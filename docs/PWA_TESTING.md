@@ -67,6 +67,9 @@ While the server is up:
 - [ ] Tap the heart again: the message leaves the saved list.
 - [ ] Airplane-mode the phone and reopen the app: the saved messages still
       appear and their voice notes still play.
+- [ ] Log a win (**Log a win** on the home screen), then open **Saved for
+      later**: it appears under **Your wins**. Airplane-mode and reopen: it is
+      still there from the phone's copy.
 
 The phone also quietly remembers the **last five messages from loved ones**, so
 the resting screen has something real even before you save anything. It remembers

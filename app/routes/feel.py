@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from app import db, generation, safety
+from app import db, generation, ollama_client, safety
 
 router = APIRouter()
 
@@ -78,11 +78,38 @@ async def step(payload: dict[str, Any]):
     return {"crisis": False, "step": step_text}
 
 
+@router.get("/api/wins")
+async def wins() -> dict[str, list[dict[str, Any]]]:
+    """Every win the friend has logged, newest first, no model, no matching.
+
+    Wins are the friend's own words. The Saved screen shows them again so a
+    small victory is never lost. The vector is never part of the response.
+    """
+    with db.connect() as conn:
+        rows = db.list_items(conn, "win")
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        item = {key: row[key] for key in row.keys()}
+        item.pop("emb", None)
+        out.append(item)
+    return {"wins": out}
+
+
 @router.post("/api/win")
 async def win(payload: dict[str, Any]):
     text = str(payload.get("text", ""))
     if text and await safety.acheck(text):
         return {**safety.crisis_response(), "crisis": True}
+
+    # Vectorised so the win can be matched later. If Ollama is down we still
+    # keep the words, just without a vector; tools/embed_missing.py fills those
+    # in later. The safety check above always runs before this model call.
+    emb = None
+    try:
+        if text:
+            emb = await ollama_client.embed(text)
+    except Exception:
+        emb = None
 
     with db.connect() as conn:
         db.insert_item(
@@ -93,7 +120,7 @@ async def win(payload: dict[str, Any]):
             text=text,
             audio=None,
             mood=None,
-            emb=None,
+            emb=emb,
         )
 
     return {"ok": True}

@@ -237,6 +237,24 @@ def test_app_js_remembers_recent_notes_for_the_resting_screen():
         assert needle in js, needle
 
 
+def test_app_js_keeps_the_friends_own_wins():
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    for needle in [
+        "openwhen-wins-v1",
+        "/api/wins",
+        "fetchWins",
+        "renderWins",
+        "winCard",
+    ]:
+        assert needle in js, needle
+
+
+def test_saved_screen_has_a_your_wins_shelf():
+    page = _flat((STATIC / "index.html").read_text(encoding="utf-8"))
+    for needle in ['id="winsHeading"', 'id="winsList"', 'id="winsEmpty"', "Your wins"]:
+        assert needle in page, needle
+
+
 def test_service_worker_keeps_recent_voice_notes_for_offline():
     js = _flat((STATIC / "sw.js").read_text(encoding="utf-8"))
     assert "openwhen-recent-v1" in js

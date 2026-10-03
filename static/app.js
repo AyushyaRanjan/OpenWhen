@@ -13,6 +13,9 @@
   var A2HS_KEY = "openwhen-a2hs-v1";
   var FAV_KEY = "openwhen-favourites-v1";
   var RECENT_KEY = "openwhen-recent-v1";
+  // The friend's own logged wins, kept on this phone so they can be reread even
+  // with no server.
+  var WINS_KEY = "openwhen-wins-v1";
   // The public config is remembered so a cold offline load still greets the
   // friend by name and shows the house's own resting line.
   var CONFIG_KEY = "openwhen-config-v1";
@@ -29,6 +32,9 @@
   // The last few messages shown, kept on this phone so the resting screen has
   // something real to show even before the friend saves anything. Newest first.
   var recent = [];
+  // The friend's own wins, newest first, mirrored from the server so the Saved
+  // screen still has them with no connection.
+  var wins = [];
 
   var deferredPrompt = null;
   var refreshing = false;
@@ -339,6 +345,26 @@
     }
   }
 
+  function readWins() {
+    try {
+      var raw = localStorage.getItem(WINS_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) wins = parsed;
+      }
+    } catch (e) {
+      wins = [];
+    }
+  }
+
+  function writeWins() {
+    try {
+      localStorage.setItem(WINS_KEY, JSON.stringify(wins));
+    } catch (e) {
+      /* storage may be unavailable; offline just has less to show */
+    }
+  }
+
   function readCachedConfig() {
     try {
       var raw = localStorage.getItem(CONFIG_KEY);
@@ -422,6 +448,43 @@
       })
       .catch(function () {
         /* offline or server asleep: the saved list can wait */
+      });
+  }
+
+  // A win is the friend's own short line, so it needs no sender or player.
+  function winCard(item) {
+    var card = make("div", "card win-card");
+    if (item && item.text) card.appendChild(make("p", "text", item.text));
+    return card;
+  }
+
+  // The friend's own wins, so a small victory is never lost. The phone's cache
+  // shows first; if a server is reachable the list is quietly refreshed.
+  function renderWins() {
+    var list = $("winsList");
+    if (!list) return;
+    list.textContent = "";
+    var empty = $("winsEmpty");
+    if (empty) empty.hidden = wins.length > 0;
+    wins.forEach(function (item) {
+      list.appendChild(winCard(item));
+    });
+  }
+
+  function fetchWins() {
+    return fetch("/api/wins")
+      .then(function (res) {
+        return res.ok ? res.json() : null;
+      })
+      .then(function (data) {
+        if (data && Array.isArray(data.wins)) {
+          wins = data.wins;
+          writeWins();
+          renderWins();
+        }
+      })
+      .catch(function () {
+        /* offline or server asleep: the cached wins can wait */
       });
   }
 
@@ -519,6 +582,8 @@
     items.forEach(function (item) {
       list.appendChild(messageCard(item));
     });
+
+    renderWins();
   }
 
   function showSaved(resting) {
@@ -527,6 +592,7 @@
       ? config.resting_message ||
         "We're not offline \u2014 you can reach us any time. \u2014 your friends"
       : "A few kind things you kept close.";
+    if (!resting) fetchWins();
     setScreen("saved");
   }
 
@@ -877,6 +943,7 @@
         }
         $("winText").value = "";
         status.textContent = "Saved. That counts, and it's here for you.";
+        fetchWins();
       })
       .catch(function () {
         status.textContent = reachError();
@@ -1061,6 +1128,7 @@
     loadShown();
     readFavorites();
     readRecent();
+    readWins();
     readCachedConfig();
     renderSaved();
 

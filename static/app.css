@@ -526,6 +526,26 @@ body.modal-open {
   color: var(--text-strong);
 }
 
+.h3 {
+  margin: var(--space-5) 0 10px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.2rem;
+  line-height: 1.25;
+  color: var(--text-strong);
+}
+
+/* A quiet divider so the friend's own wins read as their own little shelf. */
+.wins-heading {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.win-card {
+  background: var(--sage-soft);
+  border-color: transparent;
+}
+
 /* ---------- Feelings ---------- */
 
 .moods {

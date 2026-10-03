@@ -120,3 +120,45 @@ async def test_gather_items_is_read_only(tmp_path, monkeypatch):
     assert before == after == 2
     assert any(m["id"] == "m1" for m in items["messages"])
     assert any(w["id"] == "w1" for w in items["wins"])
+
+
+async def test_gather_items_surfaces_a_win_on_a_mood_tap_alone(tmp_path, monkeypatch):
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(
+            conn,
+            item_id="w1",
+            kind="win",
+            sender="me",
+            text="made tea",
+            emb=np.array([1.0, 0.0], dtype=np.float32),
+            created=1000.0,
+        )
+
+    async def fake_embed(text: str):
+        return np.array([1.0, 0.0], dtype=np.float32)
+
+    monkeypatch.setattr(ollama_client, "embed", fake_embed)
+
+    # Empty text: tapping a mood is enough for a win to come back.
+    items = await generation.gather_items("lonely", "")
+    assert any(w["id"] == "w1" for w in items["wins"])
+
+
+async def test_gather_items_keeps_wins_when_embedding_is_down(tmp_path, monkeypatch):
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(
+            conn, item_id="w1", kind="win", sender="me", text="a small win", created=1000.0
+        )
+
+    async def dead_embed(*a, **k):
+        raise ollama_client.OllamaUnavailable()
+
+    monkeypatch.setattr(ollama_client, "embed", dead_embed)
+
+    # Even with no vector, the fallback returns the friend's own win.
+    items = await generation.gather_items("tired", "")
+    assert any(w["id"] == "w1" for w in items["wins"])

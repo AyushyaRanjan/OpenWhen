@@ -44,15 +44,14 @@ async def gather_items(
     text: str,
     recently_shown_ids: list[str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Embed the feeling and pull matching messages (and wins) from the DB.
+    """Embed the feeling and pull matching messages and wins from the DB.
 
-    This mirrors what /api/feel has always done. It is read only. An embedding
-    failure or a retrieval failure degrades to an empty list, never an error.
+    Wins are looked up on a mood tap as well as typed text, and the fallback in
+    retrieval still returns one even when Ollama's embedding model is down, so
+    the friend's own wins are not stranded. This is read only. An embedding or
+    retrieval failure degrades to an empty list, never an error.
     """
     query = f"{mood}. {text}" if mood or text else "feeling"
-
-    messages_list: list[dict[str, Any]] = []
-    wins_list: list[dict[str, Any]] = []
 
     qemb = None
     try:
@@ -60,28 +59,24 @@ async def gather_items(
     except Exception:
         qemb = None
 
-    if qemb is not None:
-        try:
-            messages_list = retrieval.top_k(
-                "message", qemb, k=2, recently_shown_ids=recently_shown_ids
-            )
-        except Exception:
-            messages_list = []
-        if text:
-            try:
-                wins_list = retrieval.top_k(
-                    "win", qemb, k=2, recently_shown_ids=recently_shown_ids
-                )
-            except Exception:
-                wins_list = []
-    else:
-        # No embedding: fall back to the most recent messages.
-        try:
-            messages_list = retrieval.top_k(
-                "message", qemb, k=2, recently_shown_ids=recently_shown_ids
-            )
-        except Exception:
-            messages_list = []
+    messages_list: list[dict[str, Any]] = []
+    wins_list: list[dict[str, Any]] = []
+
+    try:
+        messages_list = retrieval.top_k(
+            "message", qemb, k=2, recently_shown_ids=recently_shown_ids, fallback_k=2
+        )
+    except Exception:
+        messages_list = []
+
+    try:
+        # One win at most, and only one they have not just seen, so the same
+        # small victory does not become wallpaper.
+        wins_list = retrieval.top_k(
+            "win", qemb, k=2, recently_shown_ids=recently_shown_ids, fallback_k=1
+        )
+    except Exception:
+        wins_list = []
 
     return {"messages": messages_list, "wins": wins_list}
 

@@ -109,6 +109,21 @@ def delete_item(conn: sqlite3.Connection, item_id: str) -> bool:
     return cursor.rowcount > 0
 
 
+def update_embedding(
+    conn: sqlite3.Connection, item_id: str, emb: np.ndarray
+) -> bool:
+    """Attach a vector to an item that was saved without one.
+
+    Used by the backfill tool for wins logged while Ollama was down. Returns
+    whether a row was actually updated.
+    """
+    cursor = conn.execute(
+        "UPDATE items SET emb = ? WHERE id = ?", (_encode(emb), item_id)
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
 def get_all_with_embeddings(
     conn: sqlite3.Connection, kind: str
 ) -> list[tuple[sqlite3.Row, np.ndarray]]:

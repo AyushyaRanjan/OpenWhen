@@ -145,3 +145,44 @@ def test_results_never_contain_the_raw_embedding(tmp_path, monkeypatch):
     query = np.array([1.0, 0.0], dtype=np.float32)
     for r in retrieval.top_k("message", query, k=5, min_score=0.0):
         assert "emb" not in r
+
+
+def test_win_fallback_returns_recent_unshown_win(tmp_path, monkeypatch):
+    # A win with no close match must still come back, and never one the friend
+    # just saw if a fresher one is available.
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+
+    with db.connect(db_path) as conn:
+        db.insert_item(
+            conn, item_id="w1", kind="win", sender="me", text="older",
+            emb=np.array([1.0, 0.0], dtype=np.float32), created=1000.0,
+        )
+        db.insert_item(
+            conn, item_id="w2", kind="win", sender="me", text="newer",
+            emb=np.array([1.0, 0.0], dtype=np.float32), created=2000.0,
+        )
+
+    query = np.array([0.0, 1.0], dtype=np.float32)  # orthogonal: nothing matches
+    results = retrieval.top_k("win", query, k=2, min_score=0.9, fallback_k=1)
+    assert [r["id"] for r in results] == ["w2"]
+    assert results[0]["fallback"] is True
+
+    # w2 already shown -> fall back to the next unshown win.
+    results = retrieval.top_k(
+        "win", query, k=2, min_score=0.9, fallback_k=1, recently_shown_ids=["w2"]
+    )
+    assert [r["id"] for r in results] == ["w1"]
+
+
+def test_top_k_handles_a_none_query_by_falling_back(tmp_path, monkeypatch):
+    # Ollama's embedding model can be down; retrieval must not crash and should
+    # still offer a real win from the fallback.
+    db_path = tmp_path / "test.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(conn, item_id="w1", kind="win", sender="me", text="a win", created=1000.0)
+
+    results = retrieval.top_k("win", None, k=2, fallback_k=1)
+    assert [r["id"] for r in results] == ["w1"]
+    assert results[0]["fallback"] is True
