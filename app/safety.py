@@ -172,13 +172,17 @@ async def model_crisis_check(text: str) -> bool:
     """
     try:
         content = await chat(
-            messages=[
-                {
-                    "role": "user",
-                    "content": "does this message suggest the person may harm themselves or not want to live? Answer only YES or NO.",
-                },
-                {"role": "user", "content": text},
-            ],
+            system=(
+                "You are a careful, conservative filter. You decide whether a "
+                "message suggests the writer may harm themselves or not want to "
+                "live. A message that only offers support or comfort to someone "
+                "else is NOT a crisis. Answer with exactly one word, YES or NO."
+            ),
+            user=(
+                f"Message:\n{text}\n\n"
+                "Does this suggest the writer may harm themselves or not want to "
+                "live? Answer only YES or NO."
+            ),
             temperature=0,
             keep_alive=settings.keep_alive,
         )

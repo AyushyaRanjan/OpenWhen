@@ -171,6 +171,17 @@ def test_service_worker_supports_the_update_handshake():
     assert "skipWaiting" in js
 
 
+def test_service_worker_applies_updates_without_a_tap():
+    # A worker that only waits on SKIP_WAITING leaves the friend stuck on an old
+    # copy of the app. The install must skip waiting, and activate must reload
+    # any page still running the previous files.
+    js = _flat((STATIC / "sw.js").read_text(encoding="utf-8"))
+    install = js[js.index('addEventListener("install"') : js.index('addEventListener("activate"')]
+    assert "skipWaiting()" in install, "install must skip waiting"
+    assert "client.navigate" in js, "activate must refresh open pages"
+    assert "openwhen-shell-v6" in js
+
+
 def test_unknown_path_serves_the_friendly_404_page():
     r = _client().get("/this-route-does-not-exist")
     assert r.status_code == 404
@@ -205,9 +216,38 @@ def test_app_js_wires_favourites_offline_and_status():
         "Showing what you saved",
         'addEventListener("offline"',
         'addEventListener("online"',
-        "I'm resting right now, but here are some you saved.",
     ]:
         assert needle in js, needle
+
+
+def test_app_js_remembers_recent_notes_for_the_resting_screen():
+    js = _flat((STATIC / "app.js").read_text(encoding="utf-8"))
+    for needle in [
+        "openwhen-recent-v1",
+        "openwhen-config-v1",
+        "rememberRecent",
+        "offlineMessages",
+        "prefetchRecent",
+        "/api/recent",
+        "readCachedConfig",
+        "writeCachedConfig",
+        "SYNC_RECENT",
+        "resting_message",
+    ]:
+        assert needle in js, needle
+
+
+def test_service_worker_keeps_recent_voice_notes_for_offline():
+    js = _flat((STATIC / "sw.js").read_text(encoding="utf-8"))
+    assert "openwhen-recent-v1" in js
+    assert "RECENT_CACHE" in js
+    assert "SYNC_RECENT" in js
+    # The recent cache must survive activation just like favourites.
+    assert "key !== RECENT_CACHE" in js
+    # Offline misses must return a real Response, and a non-root page must not
+    # silently become the friend's screen.
+    assert "offlineResponse" in js
+    assert 'caches.match("/404.html")' in js
 
 
 def test_service_worker_caches_favourites_and_serves_saved_media():
@@ -222,6 +262,22 @@ def test_service_worker_caches_favourites_and_serves_saved_media():
     assert 'indexOf("/media/")' in js
     # Feelings and API responses are still never cached.
     assert 'indexOf("/api/")' in js
+
+
+def test_app_js_registers_the_worker_first_and_guards_elements():
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert "function bind(id, handler)" in js
+    # Registration must happen before anything that could throw, so a stale
+    # cached page can never stop offline support from coming up.
+    assert js.index("registerServiceWorker();") < js.index('bind("send"')
+    assert 'bind("openSaved"' in js
+
+
+def test_service_worker_navigation_falls_back_to_the_shell():
+    js = _flat((STATIC / "sw.js").read_text(encoding="utf-8"))
+    assert 'request.mode === "navigate"' in js
+    assert 'caches.match("/index.html")' in js
+    assert 'caches.match("/")' in js
 
 
 def test_shell_has_no_external_resources():

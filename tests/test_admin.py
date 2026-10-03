@@ -19,7 +19,7 @@ def test_public_config_exposes_only_allowed_keys():
     r = client.get("/api/config")
     assert r.status_code == 200
     # Pinned exactly: helper_phone, model names and the passcode must never ride along.
-    assert set(r.json().keys()) == {"friend_name", "moods"}
+    assert set(r.json().keys()) == {"friend_name", "moods", "resting_message"}
 
 
 def test_admin_list_locked_without_or_with_wrong_passcode(monkeypatch):
@@ -83,6 +83,44 @@ def test_crisis_text_on_item_never_calls_embed(monkeypatch, tmp_path):
     assert body["crisis"] is True
     assert "14416" in body["message"]
     assert called["n"] == 0
+
+
+def test_save_anyway_keeps_the_note_without_calling_embed(monkeypatch, tmp_path):
+    from app import db, ollama_client
+    from app.routes import items as items_module
+
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(items_module, "MEDIA_DIR", tmp_path / "media")
+
+    called = {"n": 0}
+
+    async def fake_embed(*args, **kwargs):
+        called["n"] += 1
+        raise AssertionError("embed must not run for a save-anyway note")
+
+    monkeypatch.setattr(ollama_client, "embed", fake_embed)
+
+    client = TestClient(main.app)
+    r = client.post(
+        "/api/item",
+        data={
+            "kind": "message",
+            "sender": "Dagger",
+            "text": "I want to die",
+            "save_anyway": "true",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["saved"] is True
+    assert body["crisis"] is True
+    assert called["n"] == 0, "no model may be called when safety trips"
+
+    with db.connect(tmp_path / "t.db") as conn:
+        rows = db.list_items(conn, "message")
+    assert len(rows) == 1
+    assert rows[0]["text"] == "I want to die"
+    assert rows[0]["emb"] is None
 
 
 def test_admin_delete_ok_with_passcode(monkeypatch, tmp_path):

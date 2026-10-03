@@ -3,8 +3,9 @@
    responses and never stores a voice note the friend did not save. See
    AGENTS.md. */
 
-var CACHE = "openwhen-shell-v3";
+var CACHE = "openwhen-shell-v6";
 var FAV_CACHE = "openwhen-favourites-v1";
+var RECENT_CACHE = "openwhen-recent-v1";
 var FAV_PREFIX = "/__fav__/";
 
 var SHELL = [
@@ -21,15 +22,16 @@ var SHELL = [
 ];
 
 self.addEventListener("install", function (event) {
-  // No skipWaiting here on purpose: the page shows a "fresh version" prompt and
-  // tells this worker when to take over, so an update never yanks the screen
-  // out from under someone mid-sentence.
+  // Take over at once. A worker that waits for a tap may wait forever, and
+  // being stuck on old files is worse than the rare refresh mid-read. The page
+  // is reloaded by us on activate, so an online visit is always enough.
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then(function (cache) {
+    Promise.all([
+      caches.open(CACHE).then(function (cache) {
         return cache.addAll(SHELL);
-      })
+      }),
+      self.skipWaiting(),
+    ])
   );
 });
 
@@ -38,16 +40,37 @@ self.addEventListener("activate", function (event) {
     caches
       .keys()
       .then(function (keys) {
+        // A different shell cache already on disk means this is an update, not a
+        // first install. Remember that so we can refresh the open pages below.
+        // (Always bump CACHE's name when you change this file.)
+        var wasUpdate = keys.some(function (key) {
+          return key.indexOf("openwhen-shell-") === 0 && key !== CACHE;
+        });
+
         return Promise.all(
           keys.map(function (key) {
-            // Keep the shell and the friend's saved favourites. Everything else
-            // is an old generation and can go.
-            if (key !== CACHE && key !== FAV_CACHE) return caches.delete(key);
+            // Keep the shell, the friend's saved favourites, and the small set
+            // of recent voice notes. Everything else is old and can go.
+            if (key !== CACHE && key !== FAV_CACHE && key !== RECENT_CACHE) {
+              return caches.delete(key);
+            }
           })
-        );
-      })
-      .then(function () {
-        return self.clients.claim();
+        )
+          .then(function () {
+            return self.clients.claim();
+          })
+          .then(function () {
+            // An open page is still running the previous files. Reload it once
+            // so it picks up this version without the friend doing anything.
+            if (!wasUpdate) return;
+            return self.clients
+              .matchAll({ type: "window" })
+              .then(function (clients) {
+                clients.forEach(function (client) {
+                  client.navigate(client.url);
+                });
+              });
+          });
       })
   );
 });
@@ -67,6 +90,10 @@ self.addEventListener("message", function (event) {
 
   if (data.type === "UNCACHE_FAVORITE" && data.item) {
     event.waitUntil(uncacheFavorite(data.item));
+  }
+
+  if (data.type === "SYNC_RECENT") {
+    event.waitUntil(syncRecent(data.audio));
   }
 });
 
@@ -107,6 +134,49 @@ function uncacheFavorite(item) {
   });
 }
 
+function recentAudioKey(name) {
+  return "/media/" + encodeURIComponent(name);
+}
+
+// Keep exactly the voice notes for the recent messages, nothing more. The page
+// sends the current list on every change; anything not on it is dropped, so
+// this cache can never grow without bound.
+function syncRecent(audioFiles) {
+  var wanted = {};
+  (audioFiles || []).forEach(function (name) {
+    if (name) wanted[recentAudioKey(name)] = true;
+  });
+
+  return caches.open(RECENT_CACHE).then(function (cache) {
+    return cache
+      .keys()
+      .then(function (requests) {
+        return Promise.all(
+          requests.map(function (req) {
+            var path = new URL(req.url).pathname;
+            if (!wanted[path]) return cache.delete(req);
+          })
+        );
+      })
+      .then(function () {
+        return Promise.all(
+          Object.keys(wanted).map(function (path) {
+            return cache.match(path).then(function (hit) {
+              // Already kept. A missing file is not an error here.
+              return hit ? undefined : cache.add(path).catch(function () {});
+            });
+          })
+        );
+      });
+  });
+}
+
+// A same-origin file we could not serve and never cached. Better than letting
+// the browser throw its own network error at a calm moment.
+function offlineResponse() {
+  return new Response("", { status: 503, statusText: "Offline" });
+}
+
 self.addEventListener("fetch", function (event) {
   var request = event.request;
   if (request.method !== "GET") return;
@@ -117,13 +187,18 @@ self.addEventListener("fetch", function (event) {
   // What the friend typed or felt is never stored by the worker.
   if (url.pathname.indexOf("/api/") === 0) return;
 
-  // Voice notes: serve a saved favourite from the cache, otherwise let the
-  // network handle it. Never store a note the friend did not save.
+  // Voice notes: serve a kept favourite or recent note from the cache,
+  // otherwise let the network handle it. Never store a note that was not kept.
   if (url.pathname.indexOf("/media/") === 0) {
     event.respondWith(
-      caches.open(FAV_CACHE).then(function (cache) {
-        return cache.match(request).then(function (saved) {
-          return saved || fetch(request);
+      caches.open(FAV_CACHE).then(function (fav) {
+        return fav.match(request).then(function (saved) {
+          if (saved) return saved;
+          return caches.open(RECENT_CACHE).then(function (rec) {
+            return rec.match(request).then(function (kept) {
+              return kept || fetch(request);
+            });
+          });
         });
       })
     );
@@ -134,7 +209,18 @@ self.addEventListener("fetch", function (event) {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(function () {
-        return caches.match("/index.html");
+        // Offline. Serve the exact page if we have it; otherwise the app shell
+        // for the app itself, and the friendly 404 for anything else (so an
+        // offline /admin.html never silently becomes the friend's screen).
+        return caches.match(request).then(function (exact) {
+          if (exact) return exact;
+          if (url.pathname === "/" || url.pathname === "/index.html") {
+            return caches.match("/index.html").then(function (shell) {
+              return shell || caches.match("/");
+            });
+          }
+          return caches.match("/404.html");
+        });
       })
     );
     return;
@@ -154,7 +240,9 @@ self.addEventListener("fetch", function (event) {
           return response;
         })
         .catch(function () {
-          return cached;
+          // Return a real Response even when nothing was cached, or the browser
+          // shows its own raw network error.
+          return cached || offlineResponse();
         });
       return cached || network;
     })

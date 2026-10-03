@@ -34,10 +34,10 @@ Read these before you expect too much.
   app is designed to work with models that fit on an ordinary laptop. They can
   be awkward, repetitive, or clumsy. They are meant to gently introduce notes
   that a human wrote, not to write the notes themselves.
-- **The safety check is keyword-based, with an optional model pass.** Keyword
-  filters are a minimum safeguard. They can miss context and code words, and
-  they can fire on things that are not a crisis. They are not clever, and they
-  are not a guarantee.
+- **The safety check is keyword-based** (a model pass exists but is off by
+  default). Keyword filters are a minimum safeguard. They can miss context and
+  code words, and they can fire on things that are not a crisis. They are not
+  clever, and they are not a guarantee.
 
 If those limits are not acceptable for the person you have in mind, that is a
 reasonable thing to feel. This app may still help as one small thing among
@@ -187,15 +187,16 @@ All settings live in `config.json`. The app will start from
 | `moods` | The list of feeling buttons shown on the home screen. |
 | `min_match_score` | How close a message has to be to count as a match (0 to 1). Lower means it shows more, looser matches. `0.3` is a reasonable default. |
 | `keep_alive` | How long Ollama keeps a model in memory after a request, e.g. `"5m"`. Longer is faster but uses more RAM. |
-| `use_model_safety_check` | When `true`, a second, model-based crisis check runs in addition to the keyword list. Set `false` to use only the keyword list. |
+| `use_model_safety_check` | **Off by default.** When `true`, a second, model-based crisis check runs in addition to the keyword list. Small local models over-trigger on this, so the keyword list is the real safeguard; leave it `false` unless you have tested it. |
 | `admin_passcode` | The passcode for the admin page and admin API routes. **An empty value means admin is switched off, not open.** Use a private value and never commit it. |
+| `resting_message` | Optional. The human-written line shown when the server cannot be reached, instead of any "offline" language. Defaults to `We're not offline — you can reach us any time. — your friends`. |
 | `health_url` | Optional. The address the watchdog checks. Defaults to `http://127.0.0.1:8000/api/health`. |
 | `ntfy_url` | Optional. The base URL of a **self-hosted** ntfy server for watchdog alerts. Defaults to `http://127.0.0.1:8080`. Do not point this at a cloud service. |
 | `ntfy_topic` | Optional. The ntfy topic the watchdog posts to. Empty means the watchdog runs silently. |
 
-The frontend is allowed to read only two of these (`friend_name` and `moods`)
-through `GET /api/config`. Everything else — including the helper's phone number
-and the passcode — stays on the server.
+The frontend is allowed to read only three of these — `friend_name`, `moods`
+and the `resting_message` copy — through `GET /api/config`. Everything else,
+including the helper's phone number and the passcode, stays on the server.
 
 ## Safety and crisis handling
 
@@ -211,10 +212,18 @@ There are two layers.
    repeated punctuation collapsed, and whitespace squashed. Phrases are matched
    literally, with word boundaries so `die` does not match inside `diet`. This
    layer is fast, local and deterministic — no model is involved.
-2. **An optional model check** (`use_model_safety_check`). When enabled, the
-   chat model is asked a strict yes/no question about whether the message
-   suggests self-harm. Anything unclear, malformed, or failed is treated as
-   "no", so the keyword layer is never weakened by a model problem.
+2. **An optional model check** (`use_model_safety_check`, **off by default**).
+   When enabled, the chat model is asked a strict yes/no question about whether
+   the message suggests self-harm. Anything unclear, malformed, or failed is
+   treated as "no", so the keyword layer is never weakened by a model problem.
+   It is off by default because a small local model tends to answer "yes" to
+   almost any heavy-sounding text, which would block a contributor's loving
+   note. Turn it on only if you have tested it with your own model.
+
+On the contributor's form (`POST /api/item`), if the check trips and the person
+is sure their note was meant as comfort rather than written by someone at risk,
+they are offered a **"Save my note anyway"** button. That keeps the note without
+building an embedding, so still no model is called.
 
 If either layer trips, the response includes a short message pointing to
 Tele-MANAS 14416, the helper's phone number, and 112, each as a tap-to-call
@@ -231,6 +240,69 @@ Two honest things to keep in mind:
   its context. Prompts and code enforce this as best they can; small models do
   not always obey, which is another reason not to over-trust the output.
 
+## Saved favourites, and when the server is resting
+
+The friend can save any message they want to keep by tapping the little heart on
+its card. Saving is done **on their phone only**: the words are kept in the
+phone's own storage and the voice note is copied into the service-worker cache.
+Nothing about a favourite is sent to the server, and no favourite is ever shared
+across devices.
+
+Whether or not the friend keeps anything, the phone keeps the **last five
+messages from loved ones** on hand so the resting screen is never bare. It does
+two things: every note it shows them is remembered, and whenever the app opens
+while the server is reachable it quietly fetches a few recent notes in the
+background (`GET /api/recent`), so there is something to show even if they never
+tapped a feeling first. These stay on the phone too. The friend's own wins are
+not remembered; the resting screen is about other people's words.
+
+When the phone cannot reach the little server — the laptop is off, asleep, or
+the app was stopped — the friend sees a calm screen with the human-written
+`resting_message` at the top, by default *"We're not offline — you can reach us
+any time. — your friends"*, and their saved and recent messages below, with
+voice notes still playable from the cache. There are no error codes and no
+browser error page.
+
+A small dot at the bottom of the screen shows, quietly, whether the app is
+reachable: a soft green "Here with you" when it is, an amber "Showing what you
+saved" when the server cannot be reached.
+
+To try it: load the app while the server is running and leave it on the home
+screen for a few seconds (it fetches a few notes in the background), then stop
+the server and reload the page on the phone. The recent notes and the resting
+line should appear.
+
+Updates apply themselves. The service worker skips waiting, takes over and
+reloads the open page once, so an online visit is always enough — there is no
+"Refresh" button to find. (It was the old wait-for-a-tap design that once left a
+phone running a stale copy.) An already-stuck copy heals on the next online
+visit; if a standalone window stays stale, unregister the service worker once in
+DevTools → Application.
+`docs/PWA_TESTING.md` walks through the full check.
+
+## Watching the server (optional)
+
+`tools/watchdog.py` is a small helper **for you**, not part of the friend's app.
+Every five minutes it checks `health_url`, and if the server has stopped
+answering it sends one short alert through ntfy. It sends another note when the
+server comes back. It only alerts on a change of state, so it will not spam you.
+
+The alert goes to the `ntfy_url` in your config, which defaults to a
+self-hosted address on your own network. It is never sent to a cloud service,
+and it never contains anything the friend typed, felt, recorded or saved — just
+a fixed line and a timestamp.
+
+Run it in a second terminal next to the app:
+
+```powershell
+Set-Location "C:\Disk E\Code\openWhen"
+.\venv\Scripts\Activate.ps1
+python -m tools.watchdog
+```
+
+Leave `ntfy_topic` empty to run the checks without sending anything. To test a
+single check without waiting, add `--once`.
+
 ## Running the tests
 
 The whole test suite runs with pytest (already in the virtual environment):
@@ -241,9 +313,10 @@ Set-Location "C:\Disk E\Code\openWhen"
 python -m pytest -q
 ```
 
-A correct run ends with something like `65 passed` and no failures. The suite
+A correct run ends with something like `91 passed` and no failures. The suite
 covers the database, safety checks, search, the API routes, the admin passcode,
-the PWA shell, prompt loading, and the model-comparison tool. Many tests use
+the PWA shell, saved favourites and offline behaviour, the watchdog (with the
+network mocked), prompt loading, and the model-comparison tool. Many tests use
 temporary files or a fake Ollama, so they do not need the real models running.
 
 ## How to add your own voice note
@@ -268,7 +341,8 @@ You will need the app running (`python -m uvicorn app.main:app --host 127.0.0.1
 A few things worth knowing:
 
 - The text you type is safety-checked before anything is saved. If it trips the
-  crisis check, the note is not stored and no model is called.
+  crisis check, the note is not stored and no model is called. You are offered a
+  **"Save my note anyway"** button, which keeps the note without a model call.
 - The server needs the embedding model reachable to add a note. If Ollama is not
   running, saving a note returns a clear "Ollama unavailable" message instead of
   failing silently.
@@ -300,7 +374,7 @@ app/            the FastAPI server, safety check, search, and generation
 prompts/        the AI instructions, as plain editable text
 static/         the frontend: HTML, CSS, JS, PWA manifest and service worker
 tests/          the pytest suite
-tools/          development helpers (icon maker, model comparison)
+tools/          development helpers and the server watchdog (icon maker, model comparison)
 docs/           extra guides, including phone access
 config.example.json   template for your config.json
 safety_phrases.json   the crisis keyword list

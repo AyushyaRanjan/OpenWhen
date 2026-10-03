@@ -233,7 +233,11 @@ function reRecord() {
 
 /* ------------------------------------------------------------ crisis card */
 
-function showCrisis(data) {
+// The note that tripped the check, kept so the contributor can choose to save
+// it anyway. It stays in memory only, for this page.
+let pendingCrisisForm = null;
+
+function showCrisis(data, allowSave) {
   const card = $('crisisCard');
   card.replaceChildren();
 
@@ -258,9 +262,55 @@ function showCrisis(data) {
   }
   card.appendChild(list);
 
+  if (allowSave) {
+    const note = document.createElement('p');
+    note.className = 'hint';
+    note.textContent =
+      'If your note was meant as comfort and not written by someone at risk, ' +
+      'you can keep it for them. It will be saved without being read by the AI.';
+    card.appendChild(note);
+
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'primary';
+    save.id = 'crisisSaveAnyway';
+    save.textContent = 'Save my note anyway';
+    save.addEventListener('click', saveCrisisNote);
+    card.appendChild(save);
+  }
+
   card.hidden = false;
   $('addView').hidden = true;
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function saveCrisisNote() {
+  if (!pendingCrisisForm) return;
+
+  const button = $('crisisSaveAnyway');
+  if (button) button.disabled = true;
+  pendingCrisisForm.set('save_anyway', 'true');
+
+  try {
+    const res = await fetch('/api/item', { method: 'POST', body: pendingCrisisForm });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.saved) {
+      pendingCrisisForm = null;
+      $('crisisCard').hidden = true;
+      $('addView').hidden = false;
+      $('addForm').reset();
+      clearRecording();
+      resetRecorderUI();
+      showFormMessage('Saved. They will find it when they need it.');
+      return;
+    }
+    showFormMessage(data.detail || "That didn't save. Please try again.", true);
+  } catch {
+    showFormMessage("Couldn't reach the app. Is the server still running?", true);
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 /* ---------------------------------------------------------------- submit */
@@ -302,8 +352,10 @@ async function submitItem(event) {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.crisis) {
+      // Keep the note; the contributor can decide to save it anyway.
+      pendingCrisisForm = form;
       clearRecording();
-      showCrisis(data);
+      showCrisis(data, true);
       return;
     }
     if (!res.ok) {
@@ -311,6 +363,7 @@ async function submitItem(event) {
       return;
     }
 
+    pendingCrisisForm = null;
     showFormMessage('Thank you, this will mean a lot.');
     $('addForm').reset();
     clearRecording();

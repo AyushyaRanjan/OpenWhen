@@ -11,9 +11,11 @@ router = APIRouter()
 
 @router.get("/api/config")
 async def public_config() -> dict[str, object]:
-    # Only these two keys, on purpose. Never helper_name, helper_phone, the
-    # model names, or the admin passcode. A test pins the exact key set.
+    # Only public copy and the friend's name, on purpose. Never helper_name,
+    # helper_phone, the model names, or the admin passcode. A test pins the
+    # exact key set. resting_message is human-written text meant to be shown.
     return {
         "friend_name": config.settings.friend_name,
         "moods": list(config.settings.moods),
+        "resting_message": config.settings.resting_message,
     }

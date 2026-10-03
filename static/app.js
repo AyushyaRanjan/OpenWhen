@@ -12,14 +12,23 @@
   var WELCOME_KEY = "openwhen-welcome-v1";
   var A2HS_KEY = "openwhen-a2hs-v1";
   var FAV_KEY = "openwhen-favourites-v1";
+  var RECENT_KEY = "openwhen-recent-v1";
+  // The public config is remembered so a cold offline load still greets the
+  // friend by name and shows the house's own resting line.
+  var CONFIG_KEY = "openwhen-config-v1";
+  // How many messages from loved ones the phone quietly keeps for offline use.
+  var RECENT_LIMIT = 5;
 
-  var config = { friend_name: "", moods: [] };
+  var config = { friend_name: "", moods: [], resting_message: "" };
   var selectedMood = "";
   var lastQuery = { mood: "", text: "" };
   var lastChallenge = "";
   var shown = new Set();
   // Saved by the friend on this phone only; never sent to the server.
   var favorites = {};
+  // The last few messages shown, kept on this phone so the resting screen has
+  // something real to show even before the friend saves anything. Newest first.
+  var recent = [];
 
   var deferredPrompt = null;
   var refreshing = false;
@@ -93,6 +102,14 @@
       if (!res.ok) throw new Error("request failed");
       return res.json();
     });
+  }
+
+  // Bind only if the element is there. A stale cached page can lag behind a
+  // newer script, and one missing button must never stop the app from starting
+  // (or from registering the service worker that makes it work offline).
+  function bind(id, handler) {
+    var el = $(id);
+    if (el) el.addEventListener("click", handler);
   }
 
   function setScreen(name) {
@@ -237,32 +254,22 @@
   function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
 
-    window.addEventListener("load", function () {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(function (reg) {
-          if (reg.waiting && navigator.serviceWorker.controller) {
-            showUpdateBanner();
-          }
-          reg.addEventListener("updatefound", function () {
-            var installing = reg.installing;
-            if (!installing) return;
-            installing.addEventListener("statechange", function () {
-              if (
-                installing.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                showUpdateBanner();
-              }
-            });
-          });
-        })
-        .catch(function () {
-          /* offline support is a bonus; the app still works without it */
-        });
-    });
+    // Register right away rather than on the load event: the sooner the worker
+    // is installed, the sooner the friend is safe when the server disappears.
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(function (reg) {
+        // Updates apply themselves: the worker skips waiting, takes over and
+        // reloads the page. Ask for a check each visit so it never goes stale.
+        if (reg.update) reg.update();
+      })
+      .catch(function () {
+        /* offline support is a bonus; the app still works without it */
+      });
 
     navigator.serviceWorker.addEventListener("controllerchange", function () {
+      // The worker reloads the page itself on update; this stays only for the
+      // manual path, so a deliberate refresh always lands.
       if (refreshing) window.location.reload();
     });
   }
@@ -310,6 +317,140 @@
     } catch (e) {
       /* storage may be unavailable; the app still works for this visit */
     }
+  }
+
+  function readRecent() {
+    try {
+      var raw = localStorage.getItem(RECENT_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) recent = parsed;
+      }
+    } catch (e) {
+      recent = [];
+    }
+  }
+
+  function writeRecent() {
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    } catch (e) {
+      /* storage may be unavailable; offline just has less to show */
+    }
+  }
+
+  function readCachedConfig() {
+    try {
+      var raw = localStorage.getItem(CONFIG_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw) || {};
+      config.friend_name = saved.friend_name || "";
+      config.moods = Array.isArray(saved.moods) ? saved.moods : [];
+      config.resting_message = saved.resting_message || "";
+    } catch (e) {
+      /* a damaged cache is ignored; the server is the source of truth */
+    }
+  }
+
+  function writeCachedConfig() {
+    try {
+      localStorage.setItem(
+        CONFIG_KEY,
+        JSON.stringify({
+          friend_name: config.friend_name,
+          moods: config.moods,
+          resting_message: config.resting_message,
+        })
+      );
+    } catch (e) {
+      /* storage may be unavailable; offline just shows the default line */
+    }
+  }
+
+  function slimItem(item) {
+    return {
+      id: item.id,
+      sender: item.sender || "",
+      text: item.text || "",
+      audio: item.audio || null,
+      mood: item.mood || null,
+    };
+  }
+
+  // Remember messages from loved ones as they are shown. Only their words, not
+  // the friend's own wins: the resting screen is about other people. All of it
+  // stays on this phone and is never sent anywhere.
+  function rememberRecent(messages) {
+    if (!messages || !messages.length) return;
+    var kept = recent.slice();
+    messages.forEach(function (item) {
+      if (!item || !item.id || item.id === "me") return;
+      kept = kept.filter(function (r) {
+        return r.id !== item.id;
+      });
+      kept.unshift(slimItem(item));
+    });
+    recent = kept.slice(0, RECENT_LIMIT);
+    writeRecent();
+    syncRecentAudio();
+  }
+
+  // Ask the worker to keep the voice notes for those recent messages so they
+  // can still be played with no server.
+  function syncRecentAudio() {
+    var audio = recent
+      .map(function (r) {
+        return r.audio;
+      })
+      .filter(function (a) {
+        return !!a;
+      });
+    swPost({ type: "SYNC_RECENT", audio: audio });
+  }
+
+  // While the server is reachable, quietly keep a few recent notes on the
+  // phone so the resting screen is never empty. Missing this is harmless.
+  function prefetchRecent() {
+    return fetch("/api/recent?k=" + RECENT_LIMIT)
+      .then(function (res) {
+        return res.ok ? res.json() : null;
+      })
+      .then(function (data) {
+        if (data && data.messages && data.messages.length) {
+          rememberRecent(data.messages);
+        }
+      })
+      .catch(function () {
+        /* offline or server asleep: the saved list can wait */
+      });
+  }
+
+  function favouriteList() {
+    return Object.keys(favorites)
+      .sort(function (a, b) {
+        return (favorites[b].saved_at || 0) - (favorites[a].saved_at || 0);
+      })
+      .map(function (id) {
+        return favorites[id];
+      });
+  }
+
+  // What to show when there is no server: pinned favourites first, then the
+  // quiet recent ones, nothing twice.
+  function offlineMessages() {
+    var out = [];
+    var seen = {};
+    favouriteList().forEach(function (item) {
+      out.push(item);
+      seen[item.id] = true;
+    });
+    recent.forEach(function (item) {
+      if (item && item.id && !seen[item.id]) {
+        out.push(item);
+        seen[item.id] = true;
+      }
+    });
+    return out;
   }
 
   function isFavorite(id) {
@@ -365,25 +506,26 @@
     renderSaved();
   }
 
-  function renderSaved() {
+  function renderSaved(resting) {
     var list = $("savedList");
     if (!list) return;
     list.textContent = "";
 
-    var ids = Object.keys(favorites).sort(function (a, b) {
-      return (favorites[b].saved_at || 0) - (favorites[a].saved_at || 0);
-    });
+    // Resting shows everything the phone still has; otherwise just the pinned
+    // favourites the friend chose to keep close.
+    var items = resting ? offlineMessages() : favouriteList();
 
-    $("savedEmpty").hidden = ids.length > 0;
-    ids.forEach(function (id) {
-      list.appendChild(messageCard(favorites[id]));
+    $("savedEmpty").hidden = items.length > 0;
+    items.forEach(function (item) {
+      list.appendChild(messageCard(item));
     });
   }
 
   function showSaved(resting) {
-    renderSaved();
+    renderSaved(resting);
     $("savedLead").textContent = resting
-      ? "I'm resting right now, but here are some you saved."
+      ? config.resting_message ||
+        "We're not offline \u2014 you can reach us any time. \u2014 your friends"
       : "A few kind things you kept close.";
     setScreen("saved");
   }
@@ -544,6 +686,9 @@
 
     var messages = data.messages || [];
     var wins = data.wins || [];
+
+    // Keep these kind words on the phone, so a stopped server still has them.
+    rememberRecent(messages);
 
     if (!messages.length && !wins.length) {
       result.appendChild(
@@ -722,13 +867,19 @@
       .then(function (data) {
         config.friend_name = data.friend_name || "";
         config.moods = data.moods || [];
+        config.resting_message = data.resting_message || "";
+        writeCachedConfig();
         $("greeting").textContent = config.friend_name
           ? "Hi, " + config.friend_name + "."
           : "Hi.";
         renderMoods();
+        prefetchRecent();
       })
       .catch(function (err) {
-        $("greeting").textContent = "Hi.";
+        // Offline: fall back to whatever the phone last remembered.
+        $("greeting").textContent = config.friend_name
+          ? "Hi, " + config.friend_name + "."
+          : "Hi.";
         renderMoods();
         if (isOfflineError(err)) {
           goResting();
@@ -758,37 +909,43 @@
   }
 
   function init() {
+    // Register first. Offline support is the whole point, and it must not
+    // depend on the rest of this function succeeding.
+    registerServiceWorker();
+
     loadShown();
     readFavorites();
+    readRecent();
+    readCachedConfig();
     renderSaved();
 
-    $("send").addEventListener("click", doFeel);
-    $("again").addEventListener("click", function () {
+    bind("send", doFeel);
+    bind("again", function () {
       selectedMood = lastQuery.mood || selectedMood;
       $("more").value = lastQuery.text || "";
       doFeel();
     });
-    $("openWin").addEventListener("click", function () {
+    bind("openWin", function () {
       $("winStatus").textContent = "";
       setScreen("win");
     });
-    $("openChallenge").addEventListener("click", function () {
+    bind("openChallenge", function () {
       $("stepStatus").textContent = "";
       setScreen("challenge");
     });
-    $("openSaved").addEventListener("click", function () {
+    bind("openSaved", function () {
       showSaved(false);
     });
-    $("saveWin").addEventListener("click", saveWin);
-    $("getStep").addEventListener("click", getStep);
-    $("stepSmaller").addEventListener("click", shrinkStep);
-    $("stepDone").addEventListener("click", doneStep);
+    bind("saveWin", saveWin);
+    bind("getStep", getStep);
+    bind("stepSmaller", shrinkStep);
+    bind("stepDone", doneStep);
 
-    $("welcomeNext").addEventListener("click", welcomeNext);
-    $("welcomeSkip").addEventListener("click", closeWelcome);
-    $("a2hsAction").addEventListener("click", installNow);
-    $("a2hsDismiss").addEventListener("click", dismissInstall);
-    $("updateReload").addEventListener("click", reloadForUpdate);
+    bind("welcomeNext", welcomeNext);
+    bind("welcomeSkip", closeWelcome);
+    bind("a2hsAction", installNow);
+    bind("a2hsDismiss", dismissInstall);
+    bind("updateReload", reloadForUpdate);
 
     Array.prototype.forEach.call(
       document.querySelectorAll("[data-close]"),
@@ -807,7 +964,8 @@
     });
     window.addEventListener("appinstalled", function () {
       writeFlag(A2HS_KEY);
-      $("a2hs").hidden = true;
+      var banner = $("a2hs");
+      if (banner) banner.hidden = true;
     });
 
     // Keep the little status dot honest, and let a returning connection be
@@ -823,7 +981,6 @@
     window.setTimeout(hideSplash, 1800);
 
     loadConfig().then(whenReady, whenReady);
-    registerServiceWorker();
   }
 
   if (document.readyState === "loading") {

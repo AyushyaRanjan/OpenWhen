@@ -19,6 +19,25 @@ def test_sad_but_not_crisis():
     assert not safety.is_crisis("Tired, that's all")
 
 
+def test_supportive_note_is_not_a_crisis():
+    # A contributor's loving note must not be swallowed by the crisis card.
+    assert not safety.is_crisis(
+        "I'm so glad you're still here. I was scared I'd lose you, and I love you."
+    )
+    assert not safety.is_crisis("You are not alone, I will sit with you through this")
+    assert not safety.is_crisis("Please stay. The world is better with you in it.")
+
+
+def test_model_check_is_off_by_default():
+    """AGENTS.md wants the crisis check deterministic and local by default."""
+    import inspect
+
+    from app.config import Settings
+
+    default = inspect.signature(Settings).parameters["use_model_safety_check"].default
+    assert default is False
+
+
 def test_basic_suicide_phrases():
     assert safety.is_crisis("I want to die")
     assert safety.is_crisis("i want to die")

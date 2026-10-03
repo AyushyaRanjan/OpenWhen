@@ -11,6 +11,25 @@ from app import db, generation, safety
 router = APIRouter()
 
 
+@router.get("/api/recent")
+async def recent(k: int = 5) -> dict[str, list[dict[str, Any]]]:
+    """A few recent notes from loved ones, no model, no matching.
+
+    The friend's phone calls this once while it is online so the resting screen
+    has something real to show if the server later disappears. It returns only
+    kind 'message' (never the friend's own wins) and never an embedding.
+    """
+    k = max(1, min(int(k), 10))
+    with db.connect() as conn:
+        rows = db.list_items(conn, "message")[:k]
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        item = {key: row[key] for key in row.keys()}
+        item.pop("emb", None)
+        out.append(item)
+    return {"messages": out}
+
+
 @router.post("/api/feel")
 async def feel(payload: dict[str, Any]):
     mood = str(payload.get("mood", ""))

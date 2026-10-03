@@ -46,6 +46,26 @@ def test_create_and_list_item(tmp_path, monkeypatch):
     assert "emb" not in items_list[0]
 
 
+def test_recent_returns_messages_without_embeddings(tmp_path, monkeypatch):
+    from app import db
+
+    db_path = tmp_path / "t.db"
+    monkeypatch.setattr(db, "DB_PATH", db_path)
+    with db.connect(db_path) as conn:
+        db.insert_item(conn, item_id="m1", kind="message", sender="A", text="first", created=1000.0)
+        db.insert_item(conn, item_id="m2", kind="message", sender="B", text="second", created=2000.0)
+        db.insert_item(conn, item_id="w1", kind="win", sender="me", text="a win", created=3000.0)
+
+    client = TestClient(main.app)
+    r = client.get("/api/recent?k=5")
+    assert r.status_code == 200
+    msgs = r.json()["messages"]
+    # Newest first, only notes from loved ones, never a vector.
+    assert [m["text"] for m in msgs] == ["second", "first"]
+    assert all(m["kind"] == "message" for m in msgs)
+    assert all("emb" not in m for m in msgs)
+
+
 def test_feel_crisis_blocks_model(tmp_path, monkeypatch):
     from app import db, routes
 

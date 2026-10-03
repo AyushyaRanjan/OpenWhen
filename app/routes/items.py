@@ -33,6 +33,7 @@ async def create_item(
     sender: str = Form(...),
     text: str = Form(...),
     mood: str = Form(""),
+    save_anyway: bool = Form(False),
     audio: Optional[UploadFile] = File(None),
 ):
     # Basic validation
@@ -40,8 +41,11 @@ async def create_item(
         raise HTTPException(status_code=400, detail="kind must be 'message' or 'win'")
 
     # Safety runs BEFORE the embedding call below. If it trips, no model is
-    # touched and no audio is written. See AGENTS.md.
-    if text and await safety.acheck(text):
+    # touched and no audio is written. A contributor who is sure their words
+    # are meant as support may pass save_anyway=true: the note is then kept
+    # without a vector, so still no model is called. See AGENTS.md.
+    tripped = bool(text) and await safety.acheck(text)
+    if tripped and not save_anyway:
         return {**safety.crisis_response(), "crisis": True}
 
     audio_path: str | None = None
@@ -61,13 +65,15 @@ async def create_item(
             f.write(content)
         audio_path = filename
 
-    # Build query for embedding: "mood. text" (simple, safe)
-    query = f"{mood}. {text}" if mood else text
-    try:
-        emb = await ollama_client.embed(query)
-    except Exception as exc:
-        # Ollama unavailable is an expected state; degrade with clear message
-        raise HTTPException(status_code=503, detail=f"Ollama unavailable: {exc}") from exc
+    emb = None
+    if not tripped:
+        # Build query for embedding: "mood. text" (simple, safe)
+        query = f"{mood}. {text}" if mood else text
+        try:
+            emb = await ollama_client.embed(query)
+        except Exception as exc:
+            # Ollama unavailable is an expected state; degrade with clear message
+            raise HTTPException(status_code=503, detail=f"Ollama unavailable: {exc}") from exc
 
     item_id = str(uuid.uuid4())
     with db.connect() as conn:
@@ -82,6 +88,9 @@ async def create_item(
             emb=emb,
         )
 
+    if tripped:
+        # Kept without a vector. Lets the form say plainly that it was saved.
+        return {"id": item_id, "audio": audio_path, "crisis": True, "saved": True}
     return {"id": item_id, "audio": audio_path}
 
 

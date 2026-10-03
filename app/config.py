@@ -40,8 +40,14 @@ class Settings:
     moods: list[str]
     min_match_score: float
     keep_alive: str
-    use_model_safety_check: bool = True
+    # Off by default: AGENTS.md wants the crisis check fast, deterministic and
+    # local. The optional model pass is opt-in and may over-trigger on a small
+    # local model, so the keyword list is the real safeguard.
+    use_model_safety_check: bool = False
     admin_passcode: str = ""
+    # Human-written, never generated. Shown when the app is opened without the
+    # server, instead of any "offline/error" language.
+    resting_message: str = "We're not offline \u2014 you can reach us any time. \u2014 your friends"
     # Optional. The watchdog uses these; empty/unset keeps it quiet. The ntfy
     # base URL defaults to a self-hosted address so no alert ever leaves the
     # local network by accident. See AGENTS.md's no-external-API rule.
@@ -95,8 +101,15 @@ def load_settings() -> Settings:
         moods=list(raw["moods"]),
         min_match_score=float(raw["min_match_score"]),
         keep_alive=raw["keep_alive"],
-        use_model_safety_check=bool(raw.get("use_model_safety_check", True)),
+        use_model_safety_check=bool(raw.get("use_model_safety_check", False)),
         admin_passcode=str(raw.get("admin_passcode", "") or ""),
+        resting_message=str(
+            raw.get(
+                "resting_message",
+                "We're not offline \u2014 you can reach us any time. \u2014 your friends",
+            )
+            or "We're not offline \u2014 you can reach us any time. \u2014 your friends"
+        ),
         health_url=str(
             raw.get("health_url", "http://127.0.0.1:8000/api/health")
             or "http://127.0.0.1:8000/api/health"

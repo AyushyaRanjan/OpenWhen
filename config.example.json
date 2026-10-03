@@ -17,8 +17,9 @@
   ],
   "min_match_score": 0.3,
   "keep_alive": "5m",
-  "use_model_safety_check": true,
+  "use_model_safety_check": false,
   "admin_passcode": "pick-something-only-you-know",
+  "resting_message": "We're not offline — you can reach us any time. — your friends",
   "health_url": "http://127.0.0.1:8000/api/health",
   "ntfy_url": "http://127.0.0.1:8080",
   "ntfy_topic": ""
